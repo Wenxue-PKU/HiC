@@ -235,7 +235,7 @@ if(as.character(opt["out"]) != "NULL"){
       if(DATA_circle[i,1] %in% Region & DATA_circle[i,2] %in% Region2){
         par(new=T)
         plot(which(DATA_circle[i,1] == Region), nrow(mat.diff) - which(DATA_circle[i,2] == Region2)+1, pch=21, xlim=c(1,ncol(mat.diff)), 
-             ylim=c(1,nrow(mat.diff)), xaxs="i", yaxs="i", cex=2, axes=F, col='orange', lwd=2.5)
+             ylim=c(1,nrow(mat.diff)), xaxs="i", yaxs="i", cex=2, axes=F, col='black', lwd=2.5)
       }
     }
   }
