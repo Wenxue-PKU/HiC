@@ -5,7 +5,7 @@ suppressPackageStartupMessages(library("optparse"))
 option_list <- list(  
   make_option(c("-i", "--in"), default="NA", help="directories of map rds separated by ,"),
   make_option(c("-o", "--out"), default="NA", help="output file of p-values"),
-  make_option(c("-g", "--group"), default="NA", help="groups (1 or 2) separated by ,")
+  make_option(c("-g", "--group"), default="NA", help="groups (1 or 2) separated by ,. logFC >0 means 1<2")
 )
 opt <- parse_args(OptionParser(option_list=option_list))
 
@@ -101,7 +101,7 @@ for(chr in c("chr1", "chr2", "chr3", "chr4", "chr5", "chr6", "chr7", "chr8", "ch
   
   result <- glmQLFTest(fit)
   adj.p <- p.adjust(result$table$PValue, method="BH")
-  NUM <- sum(adj.p <= 0.05)
+  NUM <- sum(result$table$PValue <= 0.05)
   
   useful.cols <- as.vector(outer(c("seqnames", "start", "end"), 1:2, paste0))
   inter.frame <- as.data.frame(interactions(data))[,useful.cols]

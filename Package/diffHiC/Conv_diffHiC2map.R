@@ -11,8 +11,8 @@ opt <- parse_args(OptionParser(option_list=option_list))
 #=============================================
 # test data
 #=============================================
-FILE_in <- "X:/hideki_projects/2017-08-08_HiC_human_senescent/out/2018-10-02_extract_significantly_different_pairs/data2_OISx3_40kb/Significant_pairs.txt"
-D_diffHiC <- D_diffHiC %>% filter(seqnames1=="chr22")
+# FILE_in <- "X:/hideki_projects/2017-08-08_HiC_human_senescent/out/2018-10-02_extract_significantly_different_pairs/data2_OISx3_40kb/Significant_pairs.txt"
+# D_diffHiC <- D_diffHiC %>% filter(seqnames1=="chr22")
 
 
 suppressWarnings(suppressMessages(library(dplyr)))
