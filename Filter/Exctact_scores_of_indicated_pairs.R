@@ -12,15 +12,15 @@ option_list <- list(
 opt <- parse_args(OptionParser(option_list=option_list))
 
 
-FILE_in <- "X:/hideki_projects/2017-08-08_HiC_human_senescent/out/2018-10-02_extract_significantly_different_pairs/data2_OISx1_40kb/top50_pairs.txt"
-DIR <- "X:/hideki_projects/2017-08-08_HiC_human_senescent/data2/IMR90_OIS_con/40kb/Raw/"
+FILE_in <- "X:/hideki_projects/2017-08-08_HiC_human_senescent/out/2018-10-26_H3K27ac_HiChIP_confirmation/10kbpair_location_OIS_control.txt"
+DIR <- "X:/hideki_projects/2017-08-08_HiC_human_senescent/data2/IMR90_OIS_con/10kb/Raw/"
 
 options(scipen=10)
 FILE_in <- as.character(opt["in"])
 FILE_out <- as.character(opt["out"])
 DIR <- as.character(opt["dir"])
 if(substring(DIR, nchar(DIR), nchar(DIR)) != "/"){
-  paste(DIR, "/", sep="")
+  DIR <- paste(DIR, "/", sep="")
 }
 
 
@@ -79,12 +79,18 @@ for(c in Chromosomes){
         D_score <- rbind(D_score, D_score_c)
       }
     }
+  }else{
+    cat(FILE_object, " was not found. Skipped...\n")
   }
 }
-D_target <- dplyr::left_join(D_target, D_score, by=c("key1", "key2"))
-if(as.character(opt["header"]) == "TRUE"){
-  write.table(D_target %>% select(key1, key2, score), FILE_out, row.names = FALSE, col.names = FALSE, quote = FALSE, sep="\t")
+if(is.null(D_score)){
+  cat("No data were observed in HiC matrices\n")
 }else{
-  write.table(D_target %>% select(score), FILE_out, row.names = FALSE, col.names = FALSE, quote = FALSE, sep="\t")
+  D_target <- dplyr::left_join(D_target, D_score, by=c("key1", "key2"))
+  if(as.character(opt["header"]) == "TRUE"){
+    write.table(D_target %>% select(key1, key2, score), FILE_out, row.names = FALSE, col.names = FALSE, quote = FALSE, sep="\t")
+  }else{
+    write.table(D_target %>% select(score), FILE_out, row.names = FALSE, col.names = FALSE, quote = FALSE, sep="\t")
+  }
 }
 
