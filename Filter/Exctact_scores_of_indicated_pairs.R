@@ -73,6 +73,7 @@ for(c in Chromosomes){
     if(nrow(D_score_c) > 0){
       score <- map[D_score_c %>% as.matrix()]
       D_score_c <- D_score_c %>% mutate(score=score)
+      D_score_c <- D_score_c %>% distinct(key1, key2, .keep_all = TRUE)
       if(is.null(D_score)){
         D_score <- D_score_c
       }else{

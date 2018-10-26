@@ -5,6 +5,8 @@ suppressPackageStartupMessages(library("optparse"))
 option_list <- list(  
   make_option(c("-i", "--in"),help="score files, separated by commma"),
   make_option(c("--control"), defaul="NA", help="score files for control"),
+  make_option(c("--legend_loc"), default="bottomright", help="legend location"),
+  make_option(c("--column"), default=1, help="column number of score"),
   make_option(c("--colors"), default="NA", help="color of each data"),
   make_option(c("--names"), help="name of each files"),
   make_option(c("--bin_width"), defaul="NA", help="width of histogram. NA split bins to 40"),
@@ -30,22 +32,23 @@ if(as.character(opt["control"]) != "NA"){
 if(as.character(opt["colors"]) != "NA"){
   Colors <- unlist(strsplit(as.character(opt["colors"]), ","))
 }else{
-  Colors <- c('#66c2a5','#fc8d62','#8da0cb','#e78ac3','#a6d854','#ffd92f')[1:length(FILE_ins)]
+  Colors <- c('#fc8d62', '#66c2a5','#8da0cb','#e78ac3','#a6d854','#ffd92f')[1:length(FILE_ins)]
 }
 
 
 NAMEs <- unlist(strsplit(as.character(opt["names"]), ","))
 FILE_out <- as.character(opt["out"])
-
+COLUMN_NUM <- as.numeric(as.character(opt["column"]))
+LEGEND_LOC <- as.character(opt["legend_loc"])
 
 Limit <- list()
 DATA <- list()
 for(i in 1:length(FILE_ins)){
   D <-  read.table(FILE_ins[i], header=F, stringsAsFactors = FALSE)
-  Score <- D[,1]
+  Score <- D[,COLUMN_NUM]
   if(as.character(opt["control"]) != "NA"){
     D <-  read.table(FILE_controls[i], header=F, stringsAsFactors = FALSE)
-    Score <- log2((Score + 1)/(D[,1]+1))
+    Score <- log2((Score + 1)/(D[,COLUMN_NUM]+1))
   }
   DATA[[NAMEs[i]]] <- Score[!is.na(Score)]
   
@@ -100,15 +103,11 @@ pdf(NULL)
 par(oma=c(0,0,0,0), mar=c(4,4,2,1))
 png(filename=FILE_out, width=14, height=11,  units="cm", res = 200)
 barplot(h, beside=TRUE, col=Colors, xlab=as.character(opt["xlab"]), ylab="Probability", main=as.character(opt["title"]))
-legend("topleft", legend=NAMEs, lwd=5, seg.len = 1.5,col=Colors, bty='n')
+legend(LEGEND_LOC, legend=NAMEs, lwd=5, seg.len = 1.5,col=Colors, bty='n')
 if(length(FILE_ins) == 2){
-  pval <- (wilcox.test(DATA[[1]][1:100], DATA[[2]][1:100], alternative = "greater"))$p.value
-  # legend("bottomright", legend=c(paste("P = ",  format(pval, digits = 3), sep=""),
-  #                                paste(NAMEs[1], " (", format(length(DATA[[1]]), big.mark = ",", scientific = F), ")", sep=""),
-  #                                paste(NAMEs[2], " (", format(length(DATA[[2]]), big.mark = ",", scientific = F), ")", sep=""),""),  bty='n')
+  pval <- (wilcox.test(DATA[[1]], DATA[[2]], alternative = "greater"))$p.value
 
-  legend("topright", legend=c(paste("P1(100 of ave) = ",  format(pval, digits = 3), sep=""),
-                                 paste("P(", NAMEs[1], "<", NAMEs[2],") = ",  format(p1, digits = 3), sep="")),  bty='n')
+  legend("topright", legend=paste("Pval = ",  format(pval, digits = 5), sep=""), bty='n')
 }
 dummy <- dev.off()
 
