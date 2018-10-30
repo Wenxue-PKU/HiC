@@ -120,7 +120,7 @@ if [ $FLAG_RAW = "TRUE" ]; then
 	else
 		PRO_RAW_matrix=${DIR_LIB}/Make_association_from_fragmentdb_allChromosome.pl
 	fi
-	JOB_ID=($(squeue -o "%j %F" -u htanizawa | grep -e "badfragment_${NAME}" | cut -f2 -d' ' | xargs))
+	JOB_ID=($(squeue -o "%j %F" -u htanizawa | grep -e "badFragment_${NAME}" | cut -f2 -d' ' | xargs))
 	JOB_ID_string=$(IFS=:; echo "${JOB_ID[*]}")
 	DEPEND=""; [ -n "$JOB_ID_string" ] && DEPEND="--dependency=afterok:${JOB_ID_string}"
 	sbatch -N 1 -n 5 --exclusive=user --job-name=RAW_${NAME}_${RESOLUTION_string} $DEPEND -o ${FILE_LOG} --open-mode append --wrap="cd ${DIR_DATA}; perl $PRO_RAW_matrix -i ${NAME}_fragment.db -o ${NAME}/${RESOLUTION_string}/Raw/  -r ${RESOLUTION} -b ${NAME}_bad_fragment.txt"
