@@ -159,7 +159,7 @@ sbatch -n 7 --job-name=Mg_Reg_${NAME} $DEPEND -o "${DIR_LOG}/${TIME_STAMP}_regis
 JOB_ID=($(squeue -o "%j %F" -u htanizawa | grep -e "Mg_Reg_${NAME}" | cut -f2 -d' ' | xargs))
 JOB_ID_string=$(IFS=:; echo "${JOB_ID[*]}")
 DEPEND=""; [ -n "$JOB_ID_string" ] && DEPEND="--dependency=afterok:${JOB_ID_string}"
-sbatch -n 1 --job-name=count_${NAME} $DEPEND -o "${DIR_LOG}/${TIME_STAMP}_count_${NAME}.log" --export=SAMPLE="${NAME}",DIR_DATA="${DIR_DATA}" --open-mode append ${DIR_LIB}/../merge_aso_db/merge_aso_db/Count_read_from_fragment.sh
+sbatch -n 1 --job-name=count_${NAME} $DEPEND -o "${DIR_LOG}/${TIME_STAMP}_count_${NAME}.log" --export=SAMPLE="${NAME}",DIR_DATA="${DIR_DATA}" --open-mode append ${DIR_LIB}/../merge_aso_db/Count_read_from_fragment.sh
 
 
 
