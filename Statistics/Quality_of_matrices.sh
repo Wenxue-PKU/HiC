@@ -66,7 +66,7 @@ FILE_tmp_NA=${FILE_OUT}.tmpNA
 FILE_tmp_SD=${FILE_OUT}.tmpSD
 FILE_tmp_Bias=${FILE_OUT}.tmpBias
 
-for i in `seq 1 ${#CHRs[@]}`
+for i in $(seq 1 ${#CHRs[@]})
 do
 	let index=i-1
 	CHR=${CHRs[index]}
@@ -75,6 +75,7 @@ do
 	Rscript --vanilla --slave ${DIR_LIB}/Map/Map_property.R -i ${DIR_DATA}/${CHR}.rds --lineMAX TRUE --info SDAve >> ${FILE_tmp_Bias}
 done
 
-echo -e "Chromosome\tNA%\tBias\" >  ${FILE_OUT}
+echo -e "Chromosome\tNA%\tBiast\t" >  ${FILE_OUT}
 paste $FILE_tmp_CHR ${FILE_tmp_NA} ${FILE_tmp_Bias} >> ${FILE_OUT}
 rm $FILE_tmp_CHR ${FILE_tmp_NA} ${FILE_tmp_Bias}
+
