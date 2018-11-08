@@ -68,7 +68,7 @@ for(i in 1:length(FILE_ins)){
 if(as.character(opt["max"]) != "NA"){
   MAX <- as.numeric(as.character(opt["max"]))
 }else{
-  MAX <- Limit[['max']]
+  MAX <- round(Limit[['max']])
 }
 if(as.character(opt["min"]) != "NA"){
   MIN <- as.numeric(as.character(opt["min"]))
@@ -82,6 +82,11 @@ if(as.character(opt["min"]) != "NA"){
 
 if(as.character(opt["bin_width"]) != "NA"){
   bin_width <- as.numeric(as.character(opt["bin_width"]))
+}else if(as.character(opt["bin_width"]) != "round"){
+  bin_width <- round((MAX - MIN) / 30)
+  if(bin_width == 0){
+    bin_width <- 1
+  }
 }else{
   bin_width <- (MAX - MIN) / 30
 }
@@ -105,7 +110,7 @@ png(filename=FILE_out, width=14, height=11,  units="cm", res = 200)
 barplot(h, beside=TRUE, col=Colors, xlab=as.character(opt["xlab"]), ylab="Probability", main=as.character(opt["title"]))
 legend(LEGEND_LOC, legend=NAMEs, lwd=5, seg.len = 1.5,col=Colors, bty='n')
 if(length(FILE_ins) == 2){
-  pval <- (wilcox.test(DATA[[1]], DATA[[2]], alternative = "greater"))$p.value
+  pval <- (wilcox.test(DATA[[1]], DATA[[2]], alternative = "two.sided"))$p.value
 
   legend("topright", legend=paste("Pval = ",  format(pval, digits = 5), sep=""), bty='n')
 }
