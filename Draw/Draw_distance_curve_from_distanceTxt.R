@@ -158,6 +158,10 @@ makeSmoothLines <- function(x,y){
   nn <- lowess(log10(x), log10(y), f=0.05)
   data.frame(x=10**nn$x, y=10**nn$y)
 }
+makeSmoothLines2 <- function(x,y){
+  nn <- lowess(log10(x), y, f=0.05)
+  data.frame(x=10**nn$x, y=nn$y)
+}
 
 if(eval(parse(text=as.character(opt["fill"])))){
   par(oma=c(0,0,0,0), mar=c(0,0,0,0))
@@ -193,14 +197,22 @@ if(eval(parse(text=as.character(opt["fill"])))){
            log = LogAxis, lwd=2, xlim=c(xmin, xmax), ylim=c(ymin, ymax))
     }
   }
-  pp <- makeSmoothLines(commonDis, DATA[[1]][["y"]])
+  if(eval(parse(text=as.character(opt["ratio"])))){
+    pp <- makeSmoothLines2(commonDis, DATA[[1]][["y"]])
+  }else{
+    pp <- makeSmoothLines(commonDis, DATA[[1]][["y"]])
+  }
   par(new=T)
   plot(pp$x, pp$y, type='l', xaxs = "i", yaxs="i", xlab="", ylab="",
        col=c2[1], log = LogAxis, cex.axis=cex.axis, cex.lab=cex.lab, lwd=2, xlim=c(xmin, xmax), ylim=c(ymin, ymax))
   if(SAMPLE_NUMBER > 1){
     for(n in 2:SAMPLE_NUMBER){
       par(new=T)
-      pp <- makeSmoothLines(commonDis, DATA[[n]][["y"]])
+      if(eval(parse(text=as.character(opt["ratio"])))){
+        pp <- makeSmoothLines2(commonDis, DATA[[n]][["y"]])
+      }else{
+        pp <- makeSmoothLines(commonDis, DATA[[n]][["y"]])
+      }
       plot(pp$x, pp$y, type='l', xaxs = "i", yaxs="i", axes=F, xlab="", ylab="", col=c2[n], 
            log = LogAxis, lwd=2, xlim=c(xmin, xmax), ylim=c(ymin, ymax))
     }
