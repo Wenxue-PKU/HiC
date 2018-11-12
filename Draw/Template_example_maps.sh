@@ -80,7 +80,7 @@ text-align: center;
 </style>
 EOF
 
-for id in $(seq 1 10)
+for id in $(sqlite3 ${DB_loc} "select id from loc")
 do
 	CHR=$(sqlite3 ${DB_loc} "select chr from loc where id='${id}'")
 	START=$(sqlite3 ${DB_loc} "select start from loc where id='${id}'")
