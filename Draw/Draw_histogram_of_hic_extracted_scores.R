@@ -5,16 +5,18 @@ suppressPackageStartupMessages(library("optparse"))
 option_list <- list(  
   make_option(c("-i", "--in"),help="score files, separated by commma"),
   make_option(c("--control"), defaul="NA", help="score files for control"),
-  make_option(c("--legend_loc"), default="bottomright", help="legend location"),
+  make_option(c("--legend_loc"), default="topright", help="legend location"),
   make_option(c("--column"), default=1, help="column number of score"),
   make_option(c("--colors"), default="NA", help="color of each data"),
   make_option(c("--names"), help="name of each files"),
-  make_option(c("--bin_width"), defaul="NA", help="width of histogram. NA split bins to 40"),
+  make_option(c("--bin_width"), defaul="NA", help="width of histogram. NA split bins to 30. round make round number"),
   make_option(c("--min"), defaul="NA", help="minimum of x-axis"),
   make_option(c("--max"), defaul="NA", help="maxmum of x-axis"),
   make_option(c("--title"), defaul="", help="title of graph"),
   make_option(c("--xlab"), defaul="Read#", help="xlabel"),
-  make_option(c("-o", "--out"),help="output file")
+  make_option(c("-o", "--out"),help="output file"),
+  make_option(c("--sampling"), default="NA", help="NA for not do random sampling. Specify the sampling (repeating) number (ex.10000)"),
+  make_option(c("--combination"), default=100, help="if do random sampling. Number of target (ex. 100)")
 )
 opt <- parse_args(OptionParser(option_list=option_list))
 
@@ -40,15 +42,29 @@ NAMEs <- unlist(strsplit(as.character(opt["names"]), ","))
 FILE_out <- as.character(opt["out"])
 COLUMN_NUM <- as.numeric(as.character(opt["column"]))
 LEGEND_LOC <- as.character(opt["legend_loc"])
+NUM_sampling <- as.character(opt["sampling"])
+NUM_combination <- as.numeric(as.character(opt["combination"]))
+
+getSampling <- function(score){
+  sapply(1:as.numeric(NUM_sampling), function(i){ mean(sample(score, NUM_combination, replace = FALSE), na.rm=TRUE)})
+}
+
 
 Limit <- list()
 DATA <- list()
 for(i in 1:length(FILE_ins)){
   D <-  read.table(FILE_ins[i], header=F, stringsAsFactors = FALSE)
   Score <- D[,COLUMN_NUM]
+  if(NUM_sampling != "NA"){
+    Score <- getSampling(Score)
+  }
   if(as.character(opt["control"]) != "NA"){
     D <-  read.table(FILE_controls[i], header=F, stringsAsFactors = FALSE)
-    Score <- log2((Score + 1)/(D[,COLUMN_NUM]+1))
+    Score_control <- D[,COLUMN_NUM]
+    if(NUM_sampling != "NA"){
+      Score_control <- getSampling(Score_control)
+    }
+    Score <- log2((Score + 1)/(Score_control+1))
   }
   DATA[[NAMEs[i]]] <- Score[!is.na(Score)]
   
@@ -82,7 +98,7 @@ if(as.character(opt["min"]) != "NA"){
 
 if(as.character(opt["bin_width"]) != "NA"){
   bin_width <- as.numeric(as.character(opt["bin_width"]))
-}else if(as.character(opt["bin_width"]) != "round"){
+}else if(as.character(opt["bin_width"]) == "round"){
   bin_width <- round((MAX - MIN) / 30)
   if(bin_width == 0){
     bin_width <- 1
@@ -110,9 +126,16 @@ png(filename=FILE_out, width=14, height=11,  units="cm", res = 200)
 barplot(h, beside=TRUE, col=Colors, xlab=as.character(opt["xlab"]), ylab="Probability", main=as.character(opt["title"]))
 legend(LEGEND_LOC, legend=NAMEs, lwd=5, seg.len = 1.5,col=Colors, bty='n')
 if(length(FILE_ins) == 2){
-  pval <- (wilcox.test(DATA[[1]], DATA[[2]], alternative = "two.sided"))$p.value
+  if(NUM_sampling != "NA"){
+    # sampling methodの場合は最初の200samplingのデータだけを用いる
+    pval <- (wilcox.test(DATA[[1]][1:200], DATA[[2]][1:200], alternative = "two.sided"))$p.value
+  }else{
+    pval <- (wilcox.test(DATA[[1]], DATA[[2]], alternative = "two.sided"))$p.value
+  }
+  
+  ratio <- median(DATA[[1]], na.rm = TRUE) / median(DATA[[2]], na.rm = TRUE)
 
-  legend("topright", legend=paste("Pval = ",  format(pval, digits = 5), sep=""), bty='n')
+  title(sub=paste0("Pval = ",  format(pval, digits = 5), "  Ratio of average = ", format(ratio, digits = 3)), bty='n', cex.sub=0.8)
 }
 dummy <- dev.off()
 
