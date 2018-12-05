@@ -1,5 +1,5 @@
 #!/bin/bash
-# Template of Example Hi-C plot
+# Output example Hi-C contact maps
 
 get_usage(){
 	cat <<EOF
