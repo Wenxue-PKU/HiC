@@ -133,7 +133,7 @@ done
 # Report
 #==============================================================
 FILE_md=${DIR_OUT}/${TIME_STAMP}_summary.md
-FILE_html=${DIR_REP}/${TIME_STAMP}_summary.html
+FILE_html=${DIR_OUT}/${TIME_STAMP}_summary.html
 
 cat <<EOF > $FILE_md
 # title of report
