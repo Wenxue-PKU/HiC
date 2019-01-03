@@ -6,6 +6,7 @@ option_list <- list(
   make_option(c("-i", "--in"),help="pair information to extract (chr1,start1,end1,name1,chr2,start2,end2,name2)"),
   make_option(c("--dir"), default="NA", help="directory of matrices files"),
   make_option(c("--normalize"), default=FALSE, help="distance normalize (TURE) or not"),
+  make_option(c("--total_adjust"), default="NA", help="adjust total read number"),
   make_option(c("-o", "--out"),help="output files of scores"),
   make_option(c("--header"), default=FALSE, help="ouput location information or not")
 )
@@ -38,6 +39,11 @@ for(c in Chromosomes){
   if(file.exists(FILE_object)){
     map <- readRDS(FILE_object)
     r <- rownames(map)
+    
+    if(as.character(opt["total_adjust"]) == "TRUE"){
+      map <- map / sum(map, na.rm = TRUE) * sum(!is.na(map), na.rm=TRUE)
+    }
+    
     
     if(as.character(opt["normalize"]) =="TRUE"){
       total_per_line <- apply(map, 1, sum)
