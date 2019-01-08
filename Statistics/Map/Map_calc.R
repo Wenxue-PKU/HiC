@@ -5,6 +5,7 @@ option_list <- list(
   make_option(c("-a", "--file1"), help="matrix file1"),
   make_option(c("-b", "--file2"), help="matrix file2"),
   make_option(c("-o", "--out"), help="output matrix file or rds file "),
+  make_option(c("--keep_na"), default="FALSE", help="convert NA to 0 (FALSE) or keep (TRUE)"),
   make_option(c("--method"), default="subtract", help="how to calculate. subtract, add")
 )
 opt <- parse_args(OptionParser(option_list=option_list))
@@ -25,6 +26,12 @@ if(!file.exists(FILE_object2)){
 }else{
   map2 <- readRDS(FILE_object2)
 }
+
+if(!eval(parse(text=as.character(opt["keep_na"])))){
+  map1[is.na(map1)] <- 0
+  map2[is.na(map2)] <- 0
+}
+
 r1 <- rownames(map1)
 r2 <- rownames(map2)
 r.common <- intersect(r1, r2)
