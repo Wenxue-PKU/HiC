@@ -11,8 +11,8 @@ $| = 0;
 
 use DBI;
 
-if(@ARGV != 4 or $ARGV[0] eq '--help'){
-	die "Usage : $0 -i [detabase files] -o [output prefix]\n";
+if(@ARGV != 6 or $ARGV[0] eq '--help'){
+	die "Usage : $0 -i [detabase files] -o [output prefix] -e [enzyme site file]\n";
 }
 
 my %opt;
@@ -24,7 +24,6 @@ my $FILE_enzyme = $opt{e};
 
 # 全データを入れる変数
 my %data;
-my %fragments;
 my $dbh = DBI->connect("dbi:SQLite:dbname=$FILE_database");
 
 #---------------------------------------
@@ -57,9 +56,6 @@ while(my $ref = $sth_data->fetchrow_arrayref()){
 	my $bin1 = $chr1 . ":" . $start1 . ":" . $end1;
 	my $bin2 = $chr2 . ":" . $start2 . ":" . $end2;
 	$data{$bin1}{$bin2} += $score;
-
-	$fragments{$bin1} = $frag1;
-	$fragments{$bin2} = $frag2;
 }
 $sth_data->finish();
 $dbh->disconnect();
@@ -69,16 +65,29 @@ $dbh->disconnect();
 #---------------------------------------
 # output
 #---------------------------------------
-
 my $FILE_out = $FILE_out_prefix . "EBV.matrix";
 my $fh_out = IO::File->new($FILE_out, 'w') or die "cannot write $FILE_out: $!";
 
 # register bins
 my @bins;
-foreach my $key(sort {$fragments{$a} <=> $fragments{$b}} keys %fragments){
+my $fh_in = IO::File->new($FILE_enzyme) or die "cannot open $FILE_enzyme: $!";
+$fh_in->getline();
+while($_ = $fh_in->getline()){
+	s/\r?\n//;
+	my ($num, $chr, $position, $len_before, $len_after) = split /\t/;
+	if($chr ne "EBV"){
+		next;
+	}
+	my $start = $position - $len_before;
+	if($start == 0){
+		$start = 1;
+	}
+	my $end = $position;
+	my $key = $chr . ":" . $start . ":" . $end;
 	push @bins, $key;
 	$fh_out->print("\t$key");
 }
+$fh_in->close();
 $fh_out->print("\n");
 
 for(my $i = 0; $i < @bins; $i++){
