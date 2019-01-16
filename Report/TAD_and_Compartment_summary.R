@@ -196,6 +196,14 @@ for(resolution in c("200kb", "40kb")){
     D_size <- rbind(D_size, getComp_size(SAMPLES[i]))
   }
   
+  p <- ggplot(D_size, aes(x=comp, y=len/1000)) + facet_grid(. ~ sample) + geom_jitter(alpha = 0.1, color = "grey40")  +
+    geom_boxplot(alpha = 0.3, fill=rep(c("red", "blue"), times=length(SAMPLES))) +
+    scale_y_log10( breaks = trans_breaks("log10", function(x) 10^x),　labels = trans_format("log10", math_format(10^.x)) ) +
+    annotation_logticks(sides="l") + labs(y="Compartment size (kb)", x="")
+
+  save_plot(paste0(DIR_out, "img/Compartment_size_", resolution, ".png"),p, base_height = 5, base_width = 8)
+  
+  
   out.1 <- D_size %>% filter(comp=="A") %>% group_by(sample) %>% summarise(n_A=n(), median_A=median(len), average_A=mean(len)) %>% as.data.frame()
   out.2 <- D_size %>% filter(comp=="B") %>% group_by(sample) %>% summarise(n_B=n(), median_B=median(len), average_B=mean(len)) %>% as.data.frame()
   
