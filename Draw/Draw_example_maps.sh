@@ -94,7 +94,7 @@ SAMPLES=$@
 #==============================================================
 # 描画する領域をデータベースに登録
 #==============================================================
-DB_loc=${DIR_OUT}/location.db
+DB_loc=$(mktemp ${DIR_OUT}/location.XXXXXX.db)
 file2database.R -i ${FILE_location} --id TRUE --db ${DB_loc} --table loc
 
 
@@ -127,7 +127,6 @@ do
 	#==============================================================
 	sbatch -n 1 --job-name=gh_${id}_axis $(sq --node) -o "${DIR_OUT}/log/${TIME_STAMP}_axis_for_${id}_${CHR}_${START}_${END}.log" --open-mode append --wrap="Rscript --vanilla --slave ${DIR_LIB}/Draw_axis.R --chr ${CHR} --start ${START} --end ${END} --width 800 --out ${DIR_OUT}/img/${id}_axis.png"
 done
-
 
 #==============================================================
 # Report
@@ -182,3 +181,4 @@ cd ${DIR_OUT} && pandoc $FILE_md -s --self-contained -t html5 -c ~/.pandoc/githu
 EOF
 
 
+rm $DB_loc
