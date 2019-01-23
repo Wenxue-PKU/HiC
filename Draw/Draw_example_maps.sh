@@ -139,8 +139,6 @@ cat <<EOF > $FILE_md
 <div style="text-align:right">${TIME_STAMP}</div>
 
 ## Example plots
-
-## Result
 <style type="text/css">
 <!--
 .hk_cell{
