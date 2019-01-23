@@ -8,6 +8,7 @@ option_list <- list(
   make_option(c("--distance"), default="FALSE", help="normalized by distance curve"),
   make_option(c("--blank"), default="20", help="blank bin number between chromosomes"),
   make_option(c("--normalize"), default="NA", help="NA, average: average will be 1, probability: score were divided by total read"),
+  make_option(c("--moving_average"), default=0, help="number of merging bin for moving average calculation"),
   make_option(c("--refresh"), default="FALSE", help="FALSE: use existing map object if eixts"),
   make_option(c("--na"), default="NA", help="how to treat na value. min, na, ave, zero. min replace with minimum value. ave take average of same distance, zero replace to zero"),
   make_option(c("--zero"), default="NA", help="how to treat 0 value. min, na, ave. min replace with minimum value. ave take average of same distance"),
@@ -114,6 +115,7 @@ if(eval(parse(text=as.character(opt["corScore"])))){
   }
   
   map <- ifelse(map_expect == 0, NA, map / map_expect)
+  rm(map_expect)
   
   # もしsdが0だったらNAにする
   sdlist <- apply(map,1,sd, na.rm=TRUE)
@@ -142,6 +144,7 @@ if(eval(parse(text=as.character(opt["distance"])))){
   }
   
   map <- ifelse(map_expect == 0, NA, map / map_expect)
+  rm(map_expect)
 }
 
 
@@ -150,7 +153,26 @@ if(eval(parse(text=opt["blur"]))){
   suppressWarnings(suppressMessages(library("spatstat")))
   t <- blur(as.im(map), sigma=.6, bleed=FALSE)
   map <- t$v
+  rm(t)
 }
+
+
+
+# moving average
+N_moving_average <- as.numeric(as.character(opt["moving_average"]))
+if(N_moving_average > 0){
+  map_new <- map
+  for (i in (1 : (nrow(map)))){
+    for (j in (1 : (ncol(map)))){
+      map_new[i,j] = mean(map[max(1,i-N_moving_average):min(nrow(map),i+N_moving_average),
+                              max(1,j-N_moving_average):min(ncol(map),j+N_moving_average)], na.rm = TRUE)
+    }
+  }
+  map <- map_new
+  rm(map_new)
+}
+
+
 
 CHR <- as.character(opt["chr"])
 START <- as.numeric(as.character(opt["start"]))
