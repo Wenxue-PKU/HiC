@@ -7,6 +7,7 @@ get_usage(){
 Usage : $0 [OPTION] [target sample name(s). separated by space]
 
 Format of location file should have following columns, resolution, chr, start, end
+optional field is moving_average
 File should be deliminated by tab. Order is flexible and okay to have extrac columns but should have header as described in above.
 
 Description
@@ -91,6 +92,11 @@ TIME_STAMP=$(date +"%Y-%m-%d")
 
 SAMPLES=$@
 
+
+### Check optional field
+FLAG_moving_average=$(cat ${FILE_location} | head -n1 | grep -c moving_average)
+
+
 #==============================================================
 # 描画する領域をデータベースに登録
 #==============================================================
@@ -110,12 +116,19 @@ do
 	START=$(sqlite3 ${DB_loc} "select start from loc where id='${id}'")
 	END=$(sqlite3 ${DB_loc} "select end from loc where id='${id}'")
 
+	if [ $FLAG_moving_average -eq 0 ]; then
+		MOVING_AVERAGE=0
+	else
+		MOVING_AVERAGE=$(sqlite3 ${DB_loc} "select moving_average from loc where id='${id}'")
+	fi
+
+
 	i=0
 	for NAME in $SAMPLES
 	do
 		COL=${COLORS[$i]}
 		let i=${i}+1
-		sbatch -n 4 --job-name=${id}_${NAME}_hic $(sq --node) -o "${DIR_OUT}/log/${TIME_STAMP}_map_for_${id}_${CHR}_${START}_${END}.log" --open-mode append --wrap="Rscript --vanilla --slave ${DIR_LIB}/Draw_matrix.R -i ${DIR_DATA}/${NAME}/${RESOLUTION}/ICE/${CHR}.rds --normalize NA --zero NA --na na --chr ${CHR} --start ${START} --end ${END} --unit p --max 0.95 --color $COL --width 800 -o ${DIR_OUT}/img/${id}_${NAME}_hic.png"
+		sbatch -n 4 --job-name=${id}_${NAME}_hic $(sq --node) -o "${DIR_OUT}/log/${TIME_STAMP}_map_for_${id}_${CHR}_${START}_${END}.log" --open-mode append --wrap="Rscript --vanilla --slave ${DIR_LIB}/Draw_matrix.R -i ${DIR_DATA}/${NAME}/${RESOLUTION}/ICE/${CHR}.rds --normalize NA --zero NA --na na --moving_average ${MOVING_AVERAGE} --chr ${CHR} --start ${START} --end ${END} --unit p --max 0.95 --color $COL --width 800 -o ${DIR_OUT}/img/${id}_${NAME}_hic.png"
 
 		sbatch -n 4 --job-name=${id}_${NAME}_tad $(sq --node) -o "${DIR_OUT}/log/${TIME_STAMP}_tad_for_${id}_${CHR}_${START}_${END}.log" --open-mode append --wrap="Rscript --vanilla --slave ${DIR_LIB}/Draw_borderStrength.R -i ${DIR_DATA}/${NAME}/${RESOLUTION}/ICE/${CHR}.rds --chr ${CHR} --start ${START} --end ${END} --width 800 --height 50 --out ${DIR_OUT}/img/${id}_${NAME}_tad.png"
 

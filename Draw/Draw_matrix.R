@@ -157,23 +157,6 @@ if(eval(parse(text=opt["blur"]))){
 }
 
 
-
-# moving average
-N_moving_average <- as.numeric(as.character(opt["moving_average"]))
-if(N_moving_average > 0){
-  map_new <- map
-  for (i in (1 : (nrow(map)))){
-    for (j in (1 : (ncol(map)))){
-      map_new[i,j] = mean(map[max(1,i-N_moving_average):min(nrow(map),i+N_moving_average),
-                              max(1,j-N_moving_average):min(ncol(map),j+N_moving_average)], na.rm = TRUE)
-    }
-  }
-  map <- map_new
-  rm(map_new)
-}
-
-
-
 CHR <- as.character(opt["chr"])
 START <- as.numeric(as.character(opt["start"]))
 
@@ -224,6 +207,21 @@ if(CHR=="all"){
   map.extract <- map[Region, Region2]
 }
 
+
+
+# moving average
+N_moving_average <- as.numeric(as.character(opt["moving_average"]))
+if(N_moving_average > 0){
+  map_new <- map.extract
+  for (i in (1:(nrow(map.extract)))){
+    for (j in (1:(ncol(map.extract)))){
+      map_new[i,j] = mean(map.extract[max(1,i-N_moving_average):min(nrow(map.extract),i+N_moving_average),
+                                      max(1,j-N_moving_average):min(ncol(map.extract),j+N_moving_average)], na.rm = TRUE)
+    }
+  }
+  map.extract <- map_new
+  rm(map_new)
+}
 
 
 if(as.character(opt["unit"]) == "p"){
