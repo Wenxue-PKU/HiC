@@ -35,56 +35,61 @@ D_target <- D_target %>% mutate(chr=chr1, key1=paste(chr1, start1, end1, sep=":"
 D_score <- c()
 Chromosomes <- unique(D_target %>% pull(chr))
 for(c in Chromosomes){
-  FILE_object <- paste(DIR, c, ".rds", sep="")
+  FILE_matrix <- paste0(DIR, c, ".matrix")
+  FILE_object <- sub(".matrix", ".rds", FILE_matrix)
   if(file.exists(FILE_object)){
     map <- readRDS(FILE_object)
-    r <- rownames(map)
-    
-    if(as.character(opt["total_adjust"]) == "TRUE"){
-      map <- map / sum(map, na.rm = TRUE) * sum(!is.na(map), na.rm=TRUE)
-    }
-    
-    
-    if(as.character(opt["normalize"]) =="TRUE"){
-      total_per_line <- apply(map, 1, sum)
-      map[total_per_line==0,] <- NA
-      map[,total_per_line==0] <- NA
-      
-      # Observed / Expectのmatrixに変換する
-      map_expect <- map
-      NUM_LINE <- nrow(map)
-      for(d in 0:(NUM_LINE-1)){
-        index1 <- 1:(NUM_LINE - d)
-        index2 <- index1 + d
-        index3 <- cbind(index1, index2)
-        index4 <- cbind(index2, index1)
-        Average <- mean(as.numeric(map[index3]), na.rm=TRUE)
-        if(is.na(Average)){
-          Average = NA
-        }else if(Average == 0){
-          Average = NA
-        }
-        map_expect[index3] <- Average
-        map_expect[index4] <- Average
-      }
-      map <- ifelse(map == 0, 0, log2(map / map_expect))
-    }
-    
-    D_score_c <- D_target %>% filter(chr==c & key1 %in% r & key2 %in% r) %>% select(key1, key2) %>% distinct(key1, key2, .keep_all = TRUE)
-    
-    if(nrow(D_score_c) > 0){
-      score <- map[D_score_c %>% as.matrix()]
-      D_score_c <- D_score_c %>% mutate(score=score)
-      if(is.null(D_score)){
-        D_score <- D_score_c
-      }else{
-        D_score <- rbind(D_score, D_score_c)
-      }
-    }
+  }else if(file.exists(FILE_matrix)){
+    map <- as.matrix(read.table(FILE_matrix, header=TRUE, check.names = FALSE))
   }else{
     cat(FILE_object, " was not found. Skipped...\n")
+    next
+  }
+  r <- rownames(map)
+  
+  if(as.character(opt["total_adjust"]) == "TRUE"){
+    map <- map / sum(map, na.rm = TRUE) * sum(!is.na(map), na.rm=TRUE)
+  }
+  
+  
+  if(as.character(opt["normalize"]) =="TRUE"){
+    total_per_line <- apply(map, 1, sum)
+    map[total_per_line==0,] <- NA
+    map[,total_per_line==0] <- NA
+    
+    # Observed / Expectのmatrixに変換する
+    map_expect <- map
+    NUM_LINE <- nrow(map)
+    for(d in 0:(NUM_LINE-1)){
+      index1 <- 1:(NUM_LINE - d)
+      index2 <- index1 + d
+      index3 <- cbind(index1, index2)
+      index4 <- cbind(index2, index1)
+      Average <- mean(as.numeric(map[index3]), na.rm=TRUE)
+      if(is.na(Average)){
+        Average = NA
+      }else if(Average == 0){
+        Average = NA
+      }
+      map_expect[index3] <- Average
+      map_expect[index4] <- Average
+    }
+    map <- ifelse(map == 0, 0, log2(map / map_expect))
+  }
+  
+  D_score_c <- D_target %>% filter(chr==c & key1 %in% r & key2 %in% r) %>% select(key1, key2) %>% distinct(key1, key2, .keep_all = TRUE)
+  
+  if(nrow(D_score_c) > 0){
+    score <- map[D_score_c %>% as.matrix()]
+    D_score_c <- D_score_c %>% mutate(score=score)
+    if(is.null(D_score)){
+      D_score <- D_score_c
+    }else{
+      D_score <- rbind(D_score, D_score_c)
+    }
   }
 }
+
 if(is.null(D_score)){
   cat("No data were observed in HiC matrices\n")
 }else{
