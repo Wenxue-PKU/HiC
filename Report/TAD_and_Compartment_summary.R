@@ -49,76 +49,76 @@ cut_digits <- function(x, digits=0) {
 #=============================================
 # Register TAD border strength to database
 #=============================================
-getTAD <- function(name) {
-  file <- paste0(DIR, name, "/TAD_40kb_score.txt")
-  DATA_head <- read.table(file, header=FALSE, nrows = 5, stringsAsFactors = FALSE)
-  classes <- sapply(DATA_head, class)
-  classes[-c(1,2,3,5,6)] <- "NULL"
-  DD <- read.table(file, header=FALSE, colClasses = classes, stringsAsFactors = FALSE)
-  rm(DATA_head)
-  colnames(DD) <- c("chr", "start", "end", paste0("tadSt_", name), paste0("tad_", name))
-  DD
-}
-D_tad <- getTAD(SAMPLES[1])
-for(i in 2:length(SAMPLES)){
-  D_tad <- dplyr::left_join(D_tad, getTAD(SAMPLES[i]), by=c("chr", "start", "end"))
-}
-con = dbConnect(SQLite(), DB_sample)
-dbWriteTable(con, "TAD", D_tad, row.names= FALSE, overwrite=TRUE)
-dbDisconnect(con)
-
-#=============================================
-# Register Compartment to database
-#=============================================
-getCompartment <- function(name, resolution){
-  file <- paste0(DIR, name, "/Compartment_", resolution, ".txt")
-  DATA_head <- read.table(file, header=FALSE, nrows = 500, stringsAsFactors = FALSE)
-  classes <- sapply(DATA_head, class)
-  if(length(classes) == 6){
-    classes[5] <- "NULL"
-  }
-  DD <- read.table(file, header=FALSE, colClasses = classes, stringsAsFactors = FALSE)
-  rm(DATA_head)
-  colnames(DD) <- c("chr", "start", "end", paste0("pca_", name), paste0("comp_", name))
-  DD
-}
-for(rr in c("200kb", "40kb")){
-  D_comp <- getCompartment(SAMPLES[1], rr)
-  for(i in 2:length(SAMPLES)){
-    D_comp <- dplyr::left_join(D_comp, getCompartment(SAMPLES[i], rr), by=c("chr", "start", "end"))
-  }
-  con = dbConnect(SQLite(), DB_sample)
-  dbWriteTable(con, paste0("Comp_", rr), D_comp, row.names= FALSE, overwrite=TRUE)
-  dbDisconnect(con)
-}
-
-#=============================================
-# TAD size comparison
-#=============================================
-getTADSize <- function(name) {
-  file <- paste0(DIR, name, "/TAD_40kb.txt")
-  DATA_head <- read.table(file, header=FALSE, nrows = 5, stringsAsFactors = FALSE)
-  classes <- sapply(DATA_head, class)
-  DD <- read.table(file, header=FALSE, colClasses = classes, stringsAsFactors = FALSE)
-  rm(DATA_head)
-  colnames(DD) <- c("chr", "start", "end")
-  length <- DD[,"end"] - DD[,"start"]
-  data.frame(Sample=name, length=length, stringsAsFactors = FALSE)
-}
-D_tadSize <- getTADSize(SAMPLES[1])
-for(i in 2:length(SAMPLES)){
-  D_tadSize <- rbind(D_tadSize, getTADSize(SAMPLES[i]))
-}
-p <- ggplot(D_tadSize, aes(x=Sample, y=length/1000)) +geom_jitter(alpha = 0.05, color = "grey40")  +
-  geom_boxplot(alpha = 0.3) +
-theme(axis.text.x = element_text(angle = 45, hjust = 1))  + theme(legend.position="none") +
-  scale_y_log10() +
-  annotation_logticks(sides="l") + labs(y="TAD size (kb)", x="")
-
-save_plot(paste0(DIR_out, "img/TAD_size.png"),p, base_height = 5, base_width = 5)
-
-out <- D_tadSize %>% group_by(Sample) %>% summarise(Median=median(length), Average=format(mean(length), digits=2)) %>% as.data.frame()
-write.table(out, paste0(DIR_out, "TAD_size.txt"), sep = "\t", row.names = FALSE, col.names = TRUE, quote = FALSE)
+# getTAD <- function(name) {
+#   file <- paste0(DIR, name, "/TAD_40kb_score.txt")
+#   DATA_head <- read.table(file, header=FALSE, nrows = 5, stringsAsFactors = FALSE)
+#   classes <- sapply(DATA_head, class)
+#   classes[-c(1,2,3,5,6)] <- "NULL"
+#   DD <- read.table(file, header=FALSE, colClasses = classes, stringsAsFactors = FALSE)
+#   rm(DATA_head)
+#   colnames(DD) <- c("chr", "start", "end", paste0("tadSt_", name), paste0("tad_", name))
+#   DD
+# }
+# D_tad <- getTAD(SAMPLES[1])
+# for(i in 2:length(SAMPLES)){
+#   D_tad <- dplyr::left_join(D_tad, getTAD(SAMPLES[i]), by=c("chr", "start", "end"))
+# }
+# con = dbConnect(SQLite(), DB_sample)
+# dbWriteTable(con, "TAD", D_tad, row.names= FALSE, overwrite=TRUE)
+# dbDisconnect(con)
+# 
+# #=============================================
+# # Register Compartment to database
+# #=============================================
+# getCompartment <- function(name, resolution){
+#   file <- paste0(DIR, name, "/Compartment_", resolution, ".txt")
+#   DATA_head <- read.table(file, header=FALSE, nrows = 500, stringsAsFactors = FALSE)
+#   classes <- sapply(DATA_head, class)
+#   if(length(classes) == 6){
+#     classes[5] <- "NULL"
+#   }
+#   DD <- read.table(file, header=FALSE, colClasses = classes, stringsAsFactors = FALSE)
+#   rm(DATA_head)
+#   colnames(DD) <- c("chr", "start", "end", paste0("pca_", name), paste0("comp_", name))
+#   DD
+# }
+# for(rr in c("200kb", "40kb")){
+#   D_comp <- getCompartment(SAMPLES[1], rr)
+#   for(i in 2:length(SAMPLES)){
+#     D_comp <- dplyr::left_join(D_comp, getCompartment(SAMPLES[i], rr), by=c("chr", "start", "end"))
+#   }
+#   con = dbConnect(SQLite(), DB_sample)
+#   dbWriteTable(con, paste0("Comp_", rr), D_comp, row.names= FALSE, overwrite=TRUE)
+#   dbDisconnect(con)
+# }
+# 
+# #=============================================
+# # TAD size comparison
+# #=============================================
+# getTADSize <- function(name) {
+#   file <- paste0(DIR, name, "/TAD_40kb.txt")
+#   DATA_head <- read.table(file, header=FALSE, nrows = 5, stringsAsFactors = FALSE)
+#   classes <- sapply(DATA_head, class)
+#   DD <- read.table(file, header=FALSE, colClasses = classes, stringsAsFactors = FALSE)
+#   rm(DATA_head)
+#   colnames(DD) <- c("chr", "start", "end")
+#   length <- DD[,"end"] - DD[,"start"]
+#   data.frame(Sample=name, length=length, stringsAsFactors = FALSE)
+# }
+# D_tadSize <- getTADSize(SAMPLES[1])
+# for(i in 2:length(SAMPLES)){
+#   D_tadSize <- rbind(D_tadSize, getTADSize(SAMPLES[i]))
+# }
+# p <- ggplot(D_tadSize, aes(x=Sample, y=length/1000)) +geom_jitter(alpha = 0.05, color = "grey40")  +
+#   geom_boxplot(alpha = 0.3) +
+# theme(axis.text.x = element_text(angle = 45, hjust = 1))  + theme(legend.position="none") +
+#   scale_y_log10() +
+#   annotation_logticks(sides="l") + labs(y="TAD size (kb)", x="")
+# 
+# save_plot(paste0(DIR_out, "img/TAD_size.png"),p, base_height = 5, base_width = 5)
+# 
+# out <- D_tadSize %>% group_by(Sample) %>% summarise(Median=median(length), Average=format(mean(length), digits=2)) %>% as.data.frame()
+# write.table(out, paste0(DIR_out, "TAD_size.txt"), sep = "\t", row.names = FALSE, col.names = TRUE, quote = FALSE)
 
 
 
@@ -135,8 +135,8 @@ for(resolution in c("200kb", "40kb")){
   D_comp <- D_comp[,c("id", SAMPLES)]
   D_summ <- D_comp %>% tidyr::gather(key = "Sample", value = "compartment", -id)
 
-  out <- D_summ %>% group_by(Sample) %>% summarise(n_A=sum(compartment=="A", na.rm = TRUE), n_B=sum(compartment=="B", na.rm = TRUE)) %>% as.data.frame()
-  out2 <- out %>% mutate(p_A=cut_digits(n_A/(n_A+n_B)*100, digits = 2), p_B=cut_digits(n_B/(n_A+n_B)*100, digits = 2)) %>% select(Sample, n_A, p_A, n_B, p_B)
+  out <- D_summ %>% group_by(Sample) %>% summarise(A=sum(compartment=="A", na.rm = TRUE), B=sum(compartment=="B", na.rm = TRUE)) %>% as.data.frame()
+  out2 <- out %>% mutate(p_A=cut_digits(A/(A+B)*100, digits = 2), p_B=cut_digits(B/(A+B)*100, digits = 2)) %>% select(Sample, A, p_A, B, p_B)
   colnames(out2) <- c("Sample", "n", "%", "n", "%")
   header <- as.data.frame(t(c("", "A", "", "B", "")))
   FILE_out <- paste0(DIR_out, "Compartment_distribution_", resolution, ".txt")
@@ -152,7 +152,7 @@ for(resolution in c("200kb", "40kb")){
     labs(x="", y="Compartment (%)")
   save_plot(paste0(DIR_out, "img/Compartment_AB_ratio", resolution, ".png"),p, base_height = 5, base_width = 7)
 }
-
+q()
 
 #=============================================
 # Compartment change
