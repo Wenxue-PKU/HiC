@@ -7,7 +7,7 @@ get_usage(){
 Usage : $0 [OPTION] [target sample name(s). separated by space]
 
 Format of location file should have following columns, resolution, chr, start, end
-optional field is moving_average
+optional field is moving_average, name (use for region name)
 File should be deliminated by tab. Order is flexible and okay to have extrac columns but should have header as described in above.
 
 Description
@@ -95,7 +95,7 @@ SAMPLES=$@
 
 ### Check optional field
 FLAG_moving_average=$(cat ${FILE_location} | head -n1 | grep -c moving_average)
-
+FLAG_name=$(cat ${FILE_location} | head -n1 | grep -c name)
 
 #==============================================================
 # 描画する領域をデータベースに登録
@@ -171,10 +171,17 @@ do
 	START=$(sqlite3 ${DB_loc} "select start from loc where id='${id}'")
 	END=$(sqlite3 ${DB_loc} "select end from loc where id='${id}'")
 
+	if [ $FLAG_name -eq 0 ]; then
+		LOC_NAME=""
+	else
+		LOC_NAME="$(sqlite3 ${DB_loc} "select name from loc where id='${id}'")"
+	fi
+
+
 	for NAME in $SAMPLES
 	do
 		cat <<-EOF >> ${FILE_md}
-		<div class="hk_cell">${NAME} ${CHR}:${START}-${END}</br>
+		<div class="hk_cell">${NAME} ${CHR}:${START}-${END} $LOC_NAME</br>
 		<img width=400 src="img/${id}_${NAME}_hic.png"/></br>
 		<img width=400 src="img/${id}_${NAME}_comp.png"/></br>
 		<img width=400 src="img/${id}_${NAME}_tad.png"/></br>
