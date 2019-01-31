@@ -57,8 +57,7 @@ for col in range(0,len(DATA.columns)):
         worksheet.write(0, col, unicode(DATA.columns[col], 'utf-8'), format_header3)
 
 
-# for i in range(0,len(DATA)):
-for i in range(0,5):
+for i in range(0,len(DATA)):
     row=i+1
     for col in range(0,len(DATA.columns)):
         if col in string_col:
