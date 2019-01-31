@@ -26,6 +26,9 @@ Description
 	-d, --data [data directory]
 		data directory
 
+	-t, --title [title of report]
+		title of report
+
 	-c, --color [color list]
 		specify color for each samples. separated by space but surrounded with double quatation
 EOF
@@ -36,8 +39,8 @@ get_version(){
 	echo "${0} version 1.0"
 }
 
-SHORT=hvi:o:d:c:
-LONG=help,version,in:,out:,data:,color:
+SHORT=hvi:o:d:t:c:
+LONG=help,version,in:,out:,data:,title:,color:
 PARSED=`getopt --options $SHORT --longoptions $LONG --name "$0" -- "$@"`
 if [[ $? -ne 0 ]]; then
 	exit 2
@@ -66,6 +69,10 @@ while true; do
 			DIR_DATA="$2"
 			shift 2
 			;;
+		-t|--title)
+			TITLE="$2"
+			shift 2
+			;;
 		-c|--color)
 			COLORS=($2)
 			shift 2
@@ -88,6 +95,7 @@ TIME_STAMP=$(date +"%Y-%m-%d")
 [ ! -n "${DIR_OUT}" ] && echo "Please specify output directory" && exit 1
 [ ! -n "${DIR_DATA}" ] && echo "Please specify data directory" && exit 1
 [ ! -n "${COLORS}" ] && echo "Please specify colors" && exit 1
+[ ! -n "${TITLE}" ] && echo "Please specify report title" && exit 1
 [ $# -lt 1 ] && echo "Please specify target Hi-C sample name(s)" && exit 1
 
 SAMPLES=$@
@@ -146,12 +154,18 @@ done
 #==============================================================
 FILE_md=${DIR_OUT}/${TIME_STAMP}_summary.md
 FILE_html=${DIR_OUT}/${TIME_STAMP}_summary.html
+FILE_command=${DIR_OUT}/${TIME_STAMP}_command.sh
 
 cat <<EOF > $FILE_md
-# title of report
+# $TITLE
 <div style="text-align:right">${TIME_STAMP}</div>
 
-## Example plots
+## Graph type explanation
+1. Hi-C map
+2. Compartment type (red: compartmentA (Euchromatic), blue: compartmentB (Heterochromatic))
+3. Border strength of TAD. Red bar indicate the border of TAD
+
+## Result
 <style type="text/css">
 <!--
 .hk_cell{
@@ -172,7 +186,7 @@ do
 	END=$(sqlite3 ${DB_loc} "select end from loc where id='${id}'")
 
 	if [ $FLAG_name -eq 0 ]; then
-		LOC_NAME=""
+		LOC_NAME="${CHR}:${START}-${END}"
 	else
 		LOC_NAME="$(sqlite3 ${DB_loc} "select name from loc where id='${id}'")"
 	fi
@@ -181,21 +195,26 @@ do
 	for NAME in $SAMPLES
 	do
 		cat <<-EOF >> ${FILE_md}
-		<div class="hk_cell">${NAME} ${CHR}:${START}-${END} $LOC_NAME</br>
-		<img width=400 src="img/${id}_${NAME}_hic.png"/></br>
-		<img width=400 src="img/${id}_${NAME}_comp.png"/></br>
-		<img width=400 src="img/${id}_${NAME}_tad.png"/></br>
-		<img width=400 src="img/${id}_axis.png"/>
+		<div class="hk_cell">${NAME} $LOC_NAME</br>
+		<img width=300 src="img/${id}_${NAME}_hic.png"/></br>
+		<img width=300 src="img/${id}_${NAME}_comp.png"/></br>
+		<img width=300 src="img/${id}_${NAME}_tad.png"/></br>
+		<img width=300 src="img/${id}_axis.png"/>
 		</div>
 
 		EOF
 	done
 done
 
+cat<<EOF > $FILE_command
+#!/bin/bash
+cd ${DIR_OUT}
+pandoc $FILE_md -s --self-contained -t html5 -c /home/hideki/.pandoc/github.css  -o $FILE_html
+EOF
 
 cat<<EOF
 Run following command at computer with pandoc program
-cd ${DIR_OUT} && pandoc $FILE_md -s --self-contained -t html5 -c ~/.pandoc/github.css  -o $FILE_html
+bash $FILE_command
 EOF
 
 
