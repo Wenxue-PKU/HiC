@@ -7,7 +7,7 @@ get_usage(){
 Usage : $0 [OPTION] [target sample name(s). separated by space]
 
 Format of location file should have following columns, resolution, chr, start, end
-optional field is moving_average, name (use for region name)
+optional field is moving_average, name (use for region name), linev and lineh (line location for map)
 File should be deliminated by tab. Order is flexible and okay to have extrac columns but should have header as described in above.
 
 Description
@@ -104,6 +104,8 @@ SAMPLES=$@
 ### Check optional field
 FLAG_moving_average=$(cat ${FILE_location} | head -n1 | grep -c moving_average)
 FLAG_name=$(cat ${FILE_location} | head -n1 | grep -c name)
+FLAG_lineh=$(cat ${FILE_location} | head -n1 | grep -c lineh)
+FLAG_linev=$(cat ${FILE_location} | head -n1 | grep -c linev)
 
 #==============================================================
 # 描画する領域をデータベースに登録
@@ -130,13 +132,25 @@ do
 		MOVING_AVERAGE=$(sqlite3 ${DB_loc} "select moving_average from loc where id='${id}'")
 	fi
 
+	if [ $FLAG_lineh -eq 0 ]; then
+		DRAW_LINE_H=""
+	else
+		DRAW_LINE_H="--lineh_chr ${CHR} --lineh_pos $(sqlite3 ${DB_loc} "select lineh from loc where id='${id}'")"
+	fi
+
+	if [ $FLAG_linev -eq 0 ]; then
+		DRAW_LINE_V=""
+	else
+		DRAW_LINE_V="--linev_chr ${CHR} --linev_pos $(sqlite3 ${DB_loc} "select linev from loc where id='${id}'")"
+	fi	
+
 
 	i=0
 	for NAME in $SAMPLES
 	do
 		COL=${COLORS[$i]}
 		let i=${i}+1
-		sbatch -n 4 --job-name=${id}_${NAME}_hic $(sq --node) -o "${DIR_OUT}/log/${TIME_STAMP}_map_for_${id}_${CHR}_${START}_${END}.log" --open-mode append --wrap="Rscript --vanilla --slave ${DIR_LIB}/Draw_matrix.R -i ${DIR_DATA}/${NAME}/${RESOLUTION}/ICE/${CHR}.rds --normalize NA --zero NA --na na --moving_average ${MOVING_AVERAGE} --chr ${CHR} --start ${START} --end ${END} --unit p --max 0.95 --color $COL --width 800 -o ${DIR_OUT}/img/${id}_${NAME}_hic.png"
+		sbatch -n 4 --job-name=${id}_${NAME}_hic $(sq --node) -o "${DIR_OUT}/log/${TIME_STAMP}_map_for_${id}_${CHR}_${START}_${END}.log" --open-mode append --wrap="Rscript --vanilla --slave ${DIR_LIB}/Draw_matrix.R -i ${DIR_DATA}/${NAME}/${RESOLUTION}/ICE/${CHR}.rds --normalize NA --zero NA --na na --moving_average ${MOVING_AVERAGE} --chr ${CHR} --start ${START} --end ${END} --unit p --max 0.95 --color $COL --width 800 -o ${DIR_OUT}/img/${id}_${NAME}_hic.png $DRAW_LINE_H $DRAW_LINE_V"
 
 		sbatch -n 4 --job-name=${id}_${NAME}_tad $(sq --node) -o "${DIR_OUT}/log/${TIME_STAMP}_tad_for_${id}_${CHR}_${START}_${END}.log" --open-mode append --wrap="Rscript --vanilla --slave ${DIR_LIB}/Draw_borderStrength.R -i ${DIR_DATA}/${NAME}/${RESOLUTION}/ICE/${CHR}.rds --chr ${CHR} --start ${START} --end ${END} --width 800 --height 50 --out ${DIR_OUT}/img/${id}_${NAME}_tad.png"
 
