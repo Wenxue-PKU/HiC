@@ -11,6 +11,7 @@ parser = argparse.ArgumentParser()
 parser.add_argument("-i", "--pair", help="significant pair file")
 parser.add_argument("-o", "--out", help="output file")
 parser.add_argument("-g", "--group", help="group")
+parser.add_argument("-t", "--title", help="title of excel tab")
 args = parser.parse_args()
 
 
@@ -24,7 +25,7 @@ GROUP = [0]*11 + list(map(int, args.group.split(",")))
 DATA = pd.read_csv(FILE_in, sep='\t', header=0)
 
 workbook = xlsxwriter.Workbook(FILE_out)
-worksheet = workbook.add_worksheet()
+worksheet = workbook.add_worksheet(args.title)
 
 format_sig = workbook.add_format({'bg_color': '#D1E68F', 'font_color': '#000000'})
 format_string = workbook.add_format({'align': 'right'})

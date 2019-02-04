@@ -30,6 +30,9 @@ Description
 	
 	-x, --organism [human|mouse]
 		organism name
+
+	-t, --title [title]
+		title appeared in excel tab
 EOF
 
 }
@@ -38,8 +41,8 @@ get_version(){
 	echo "${0} version 1.0"
 }
 
-SHORT=hvr:g:d:o:x:
-LONG=help,version,resolution:,group:,data:,out:,organism:
+SHORT=hvr:g:d:o:x:t:
+LONG=help,version,resolution:,group:,data:,out:,organism:,title:
 PARSED=`getopt --options $SHORT --longoptions $LONG --name "$0" -- "$@"`
 if [[ $? -ne 0 ]]; then
 	exit 2
@@ -75,7 +78,11 @@ while true; do
 		-x|--organism)
 			ORGANISM="$2"
 			shift 2
-			;;			
+			;;
+		-t|--title)
+			EXCEL_tab="$2"
+			shift 2
+			;;
 		--)
 			shift
 			break
@@ -95,6 +102,7 @@ TIME_STAMP=$(date +"%Y-%m-%d")
 [ ! -n "${DIR_DATA}" ] && echo "Please specify data directory" && exit 1
 [ ! -n "${FILE_OUT}" ] && echo "Please specify output file" && exit 1
 [ ! -n "${ORGANISM}" ] && echo "Please specify organism" && exit 1
+EXCEL_tab=${EXCEL_tab:-"Sheet1"}
 
 NAME_LIST="$@"
 
@@ -143,8 +151,9 @@ do
 	sbatch -n 4 --job-name=gs_${UNIQ_ID}_${NAME} $DEPEND -o "${DIR_tmp}/log/get_hicScore.log" --open-mode append --wrap="cd ${DIR_tmp} && Rscript --vanilla --slave ${DIR_LIB}/../../Filter/Exctact_scores_of_indicated_pairs.R --in pairs.txt --dir ${DIR_DATA}/${NAME}/${RESOLUTION}/Raw --out ${DIR_tmp}/hic/${NAME}.txt"
 done
 
-
-### 取得してきたスコアをまとめる
+#==============================================================
+# 取得してきたスコアをまとめる
+#==============================================================
 JOB_ID=($(squeue -o "%j %F" -u htanizawa | grep -e "gs_${UNIQ_ID}" | cut -f2 -d' ' | xargs))
 JOB_ID_string=$(IFS=:; echo "${JOB_ID[*]}")
 DEPEND=""; [ -n "$JOB_ID_string" ] && DEPEND="--dependency=afterok:${JOB_ID_string}"
@@ -155,7 +164,7 @@ echo "$NAME_LIST" | tr ' ' '\t' > ../hic.txt
 echo "$NAME_LIST" | xargs -n1 | xargs -I@ sh -c "echo \@.txt" | xargs | xargs paste >> ../hic.txt
 cd ${DIR_tmp}
 paste pvalue.txt hic.txt > $FILE_OUT
-python ${DIR_LIB}/Summarize_significant_pairs.py -i ${FILE_OUT} -o ${FILE_excel} -g ${group}
+python ${DIR_LIB}/Summarize_significant_pairs.py -i ${FILE_OUT} -o ${FILE_excel} -g "${group}" -t "${EXCEL_tab}"
 rm -r ${DIR_tmp}
 EOF
 
