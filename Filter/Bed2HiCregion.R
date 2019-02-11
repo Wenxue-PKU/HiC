@@ -56,11 +56,11 @@ if(file.exists(FILE_OUT)){
 
 select_method <- function(method){
   switch (method,
-          all = function(BED, TARGET_BED, distance){which(as.character(BED[i,"chr"]) == as.character(TARGET_BED[,"chr"]) & distance > MIN & distance <= MAX)},
-          same = function(BED, TARGET_BED, distance){which(as.character(BED[i,"chr"]) == as.character(TARGET_BED[,"chr"]) & distance > MIN & distance <= MAX &
-                                   as.character(BED[i,"row_index"]) == as.character(TARGET_BED[,"row_index"]))},
-          different = function(BED, TARGET_BED, distance){which(as.character(BED[i,"chr"]) == as.character(TARGET_BED[,"chr"]) & distance > MIN & distance <= MAX &
-                                        as.character(BED[i,"row_index"]) != as.character(TARGET_BED[,"row_index"]))}
+          all = function(ANCHOR_BED, TARGET_BED, distance){which(as.character(ANCHOR_BED["chr"]) == as.character(TARGET_BED[,"chr"]) & distance > MIN & distance <= MAX)},
+          same = function(ANCHOR_BED, TARGET_BED, distance){which(as.character(ANCHOR_BED["chr"]) == as.character(TARGET_BED[,"chr"]) & distance > MIN & distance <= MAX &
+                                   as.character(ANCHOR_BED["row_index"]) == as.character(TARGET_BED[,"row_index"]))},
+          different = function(ANCHOR_BED, TARGET_BED, distance){which(as.character(ANCHOR_BED["chr"]) == as.character(TARGET_BED[,"chr"]) & distance > MIN & distance <= MAX &
+                                        as.character(ANCHOR_BED["row_index"]) != as.character(TARGET_BED[,"row_index"]))}
   )
 }
 check <- select_method(as.character(opt["combination"]))
@@ -70,7 +70,7 @@ check <- select_method(as.character(opt["combination"]))
 getComb <- function(i){
   TARGET_BED <- BED[i:NUM,]
   distance <- abs(as.numeric(BED[i,"middle"]) - as.numeric(TARGET_BED[,"middle"]))
-  index <- check(BED, TARGET_BED, distance)
+  index <- check(BED[i,], TARGET_BED, distance)
   if(length(index) > 1){
     OUT <- cbind(BED[rep(i,length(index)),c("chr", "start", "end", "row_index")], TARGET_BED[index,c("chr", "start", "end", "row_index")])
     index <- which(as.numeric(OUT[,2]) > as.numeric(OUT[,6])) 
