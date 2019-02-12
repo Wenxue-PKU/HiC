@@ -1,6 +1,6 @@
 #!/bin/bash
 # Calculate Hi-C map resolution
-# calculation were followed https://github.com/aidenlab/juicer/edit/master/misc/calculate_map_resolution.sh
+# calculation part was just copied from calculate_map_resolution.sh of juicer software.
 
 get_usage(){
 	cat <<EOF
@@ -16,14 +16,14 @@ Description
 	5. map quality 1
 	6. fragment id 1
 	7. fragment location 1
-	8. repeat 1
+	8. repeat or not 1
 	9. chr 2
 	10. position 2
 	11. direction 2
 	12. map quality 2
 	13. fragment id 2
 	14. fragment location 2
-	15. repeat 2
+	15. repeat or not 2
 	list the all map files and make space between different files.
 
 	-h, --help
