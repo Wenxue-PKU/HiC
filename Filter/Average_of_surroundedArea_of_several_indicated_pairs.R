@@ -31,7 +31,7 @@ D_target <- D_target %>% mutate(chr=chr1, key1=paste(chr1, start1, end1, sep=":"
 
 MatrixSize <- 2*BinNum + 1
 score <- matrix(0, nrow=MatrixSize, ncol=MatrixSize)
-Total_added <- 0
+Total_added <- matrix(0, nrow=MatrixSize, ncol=MatrixSize)
 Chromosomes <- unique(D_target %>% pull(chr))
 for(c in Chromosomes){
   FILE_matrix <- paste0(DIR, c, ".matrix")
@@ -89,9 +89,9 @@ for(c in Chromosomes){
       for(j in seq(-BinNum, BinNum)){
         LL <- cbind(D_score_c2$bin1 + i, D_score_c2$bin2 + j)
         score[i+BinNum+1,j+BinNum+1] <- score[i+BinNum+1,j+BinNum+1] + sum(map[LL], na.rm = TRUE)
+        Total_added[i+BinNum+1,j+BinNum+1] <- Total_added[i+BinNum+1,j+BinNum+1] + sum(!is.na(map[LL]))
       }
     }
-    Total_added <- Total_added + nrow(D_score_c2)
   }
 }
 
