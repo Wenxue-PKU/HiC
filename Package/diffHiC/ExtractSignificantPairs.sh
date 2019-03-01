@@ -124,7 +124,7 @@ FILE_excel=${FILE_OUT/.txt/.xlsx}
 for CHR in $CHRs
 do
 	FILE_in=$(echo "$NAME_LIST" | xargs -n1 | xargs -I@ sh -c "echo ${DIR_DATA}/\@/${RESOLUTION}/Raw/${CHR}.rds" | xargs | tr ' ' ',')
-	sbatch -n 4 --job-name=si_${UNIQ_ID}_${CHR} -o "${DIR_tmp}/log/define_significant_pairs_${CHR}.log" --open-mode append --wrap="Rscript2 --vanilla --slave ${DIR_LIB}/../../Package/diffHiC/Extract_diff_pairs.R -i ${FILE_in} -o ${DIR_tmp}/scores/${CHR}.txt --group ${group}"
+	sbatch -n 4 --job-name=si_${UNIQ_ID}_${CHR} -o "${DIR_tmp}/log/define_significant_pairs_${CHR}.log" --open-mode append --wrap="Rscript2 --vanilla --slave ${DIR_LIB}/Package/diffHiC/Extract_diff_pairs.R -i ${FILE_in} -o ${DIR_tmp}/scores/${CHR}.txt --group ${group}"
 done
 
 ### 結果をまとめてP-valueでソートする
