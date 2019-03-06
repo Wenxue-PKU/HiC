@@ -134,26 +134,25 @@ sbatch -n 1 --job-name=si2_${UNIQ_ID} $DEPEND -o "${FILE_log}" --open-mode appen
 cd ${DIR_tmp}/scores
 cat chr1.txt | head -n1 > $FILE_OUT
 ls chr*.txt | xargs -n1 | xargs -n1 -I@ sh -c "cat \@ | tail -n+2" | sort -k11,11g >> $FILE_OUT
-cat ${DIR_tmp}/log/define_significant_pairs_*.log | awk -v OFS='\t' '{Nsig+=\$1; Nall++\$2}END{print Nsig,Nall}'
-rm chr*.txt
+cat ${DIR_tmp}/log/define_significant_pairs_*.log | awk -v OFS='\t' 'BEGIN{Nsig=0; Nall=0}{Nsig+=\$1; Nall+=\$2}END{print Nsig,Nall}'
 EOF
 
 
 #==============================================================
-# TOP 50についてHi-C mapを描画する
+# TOP 1000についてHi-C mapを描画する
 #==============================================================
 JOB_ID=($(squeue -o "%j %F" -u htanizawa | grep -e "si2_${UNIQ_ID}" | cut -f2 -d' ' | xargs))
 JOB_ID_string=$(IFS=:; echo "${JOB_ID[*]}")
 DEPEND=""; [ -n "$JOB_ID_string" ] && DEPEND="--dependency=afterok:${JOB_ID_string}"
 DB_loc=${DIR_tmp}/location.db
-FILE_location=${DIR_tmp}/top1000.txt
+FILE_location=${DIR_tmp}/location.txt
+FILE_excel_data=${DIR_tmp}/data_for_excel.txt
 sbatch -n 1 --job-name=drw_${UNIQ_ID} $DEPEND -o "${DIR_tmp}/log/drawGraph.log" --open-mode append <<-EOF
 #!/bin/sh
 echo "chr1 start1 end1 chr2 start2 end2" | tr ' ' '\t' > "$FILE_location"
-cat $FILE_OUT | head -n 1001 | awk -v OFS='\t' 'NR>1{print \$1,\$2-200000,\$3+200000,\$4,\$5-200000,\$6+200000}' >> $FILE_location
+cat $FILE_OUT | awk -v OFS='\t' 'NR>1{print \$1,\$2-200000,\$3+200000,\$4,\$5-200000,\$6+200000}' >> $FILE_location
 file2database.R -i ${FILE_location} --id TRUE --db ${DB_loc} --table loc
-
-for id in \$(sqlite3 ${DB_loc} "select id from loc")
+for id in \$(seq 1 1000)
 do
 	CHR1=\$(sqlite3 ${DB_loc} "select chr1 from loc where id='\${id}'")
 	START1=\$(sqlite3 ${DB_loc} "select start1 from loc where id='\${id}'")
@@ -163,21 +162,22 @@ do
 	END2=\$(sqlite3 ${DB_loc} "select end2 from loc where id='\${id}'")
 	sbatch -n 4 --job-name=drw_${UNIQ_ID}_\${id} -o "${DIR_tmp}/log/drawGraph_\${id}.log" --open-mode append --wrap="Rscript --vanilla --slave ${DIR_LIB}/../../Draw/Draw_matrix.R -i ${DIR_DATA}/${NAME}/${RESOLUTION}/ICE/\${CHR1}.rds --normalize NA --zero NA --na na --chr \${CHR1} --start \${START1} --end \${END1} --chr2 \${CHR2} --start2 \${START2} --end2 \${END2} --unit p --max 0.95 --color red --width 500 -o ${DIR_tmp}/img/rank_\${id}.png"
 done
-EOF
 
 #==============================================================
 # 取得してきたスコアをまとめる
 #==============================================================
 JOB_ID=($(squeue -o "%j %F" -u htanizawa | grep -e "drw_${UNIQ_ID}" | cut -f2 -d' ' | xargs))
-JOB_ID_string=$(IFS=:; echo "${JOB_ID[*]}")
-DEPEND=""; [ -n "$JOB_ID_string" ] && DEPEND="--dependency=afterok:${JOB_ID_string}"
-FILE_excel_data=${DIR_tmp}/data_for_excel.txt
-sbatch -n 1 --job-name=xls_${UNIQ_ID} $DEPEND -o "${FILE_log}" --open-mode append <<-EOF
+JOB_ID_string=\$(IFS=:; echo "\${JOB_ID[*]}")
+DEPEND=""; [ -n "\$JOB_ID_string" ] && DEPEND="--dependency=afterok:\${JOB_ID_string}"
+sbatch -n 1 --job-name=xls_${UNIQ_ID} \$DEPEND -o "${FILE_log}" --open-mode append <<-EEE
 #!/bin/sh
 echo -ne "id\t" > $FILE_excel_data
 cat $FILE_OUT | head -n1 >> $FILE_excel_data
-cat $FILE_OUT | head -n 1001 | awk -v OFS='\t' 'NR>1{rank=NR-1; print rank,\$0}' >> $FILE_excel_data
+cat $FILE_OUT | awk -v OFS='\t' 'NR>1&&NR<1001{rank=NR-1; print rank,\$0}' >> $FILE_excel_data
 cd ${DIR_tmp}/img
 python ${DIR_LIB}/Summarize_significant_pairs.py -i $FILE_excel_data -o ${FILE_excel} -t "${NAME}" --image ${DIR_tmp}/img
-# rm -r ${DIR_tmp}
+find ${DIR_tmp}/log -type f -empty -delete
+rm -r ${DIR_tmp}
+EEE
+
 EOF
