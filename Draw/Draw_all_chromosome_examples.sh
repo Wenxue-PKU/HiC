@@ -122,5 +122,8 @@ do
 done
 
 ### Pythonで出力
-python ${DIR_LIB}/summarize_draw_all_chromosome_result.py -o ${DIR_OUT}/Summary.xlsx --image ${DIR_OUT}/img --name $(echo $SAMPLES | tr ' ' ',') --chromosome $(IFS=,; echo "${CHRs[*]}")
+JOB_ID=($(squeue -o "%j %F" -u htanizawa | grep -e "dr" | cut -f2 -d' ' | xargs))
+JOB_ID_string=$(IFS=:; echo "${JOB_ID[*]}")
+DEPEND=""; [ -n "$JOB_ID_string" ] && DEPEND="--dependency=afterany:${JOB_ID_string}"
+sbatch -n 4 --job-name=sum $(sq --node) $DEPEND -o "${DIR_OUT}/log/${TIME_STAMP}_makeExcel.log" --open-mode append --wrap="python ${DIR_LIB}/summarize_draw_all_chromosome_result.py -o ${DIR_OUT}/Summary.xlsx --image ${DIR_OUT}/img --name $(echo $SAMPLES | tr ' ' ',') --chromosome $(IFS=,; echo \"${CHRs[*]}\")"
 
