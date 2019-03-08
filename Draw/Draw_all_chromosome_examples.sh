@@ -109,17 +109,17 @@ esac
 [ ! -e ${DIR_OUT}/img ] && mkdir ${DIR_OUT}/img
 [ ! -e ${DIR_OUT}/log ] && mkdir ${DIR_OUT}/log
 
-# for i in `seq 1 ${#CHRs[@]}`
-# do
-# 	let index=i-1
-# 	CHR=${CHRs[index]}
-# 	START=1
-# 	END=${LENGTH[index]}
-# 	for NAME in $SAMPLES
-# 	do
-# 		sbatch -n 4 --job-name=dr_${NAME}_${CHR} $(sq --node) -o "${DIR_OUT}/log/${TIME_STAMP}_map_for_${NAME}_${CHR}.log" --open-mode append --wrap="Rscript --vanilla --slave ${DIR_LIB}/Draw_matrix.R -i ${DIR_DATA}/${NAME}/${RESOLUTION}/ICE/${CHR}.rds --normalize NA --zero NA --na na --chr ${CHR} --start ${START} --end ${END} --unit p --max 0.95 --color red --width 500 -o ${DIR_OUT}/img/${NAME}_${CHR}.png"
-# 	done
-# done
+for i in `seq 1 ${#CHRs[@]}`
+do
+	let index=i-1
+	CHR=${CHRs[index]}
+	START=1
+	END=${LENGTH[index]}
+	for NAME in $SAMPLES
+	do
+		sbatch -n 4 --job-name=dr_${NAME}_${CHR} $(sq --node) -o "${DIR_OUT}/log/${TIME_STAMP}_map_for_${NAME}_${CHR}.log" --open-mode append --wrap="Rscript --vanilla --slave ${DIR_LIB}/Draw_matrix.R -i ${DIR_DATA}/${NAME}/${RESOLUTION}/ICE/${CHR}.rds --normalize NA --zero NA --na na --chr ${CHR} --start ${START} --end ${END} --unit p --max 0.95 --color red --width 500 -o ${DIR_OUT}/img/${NAME}_${CHR}.png"
+	done
+done
 
 ### Pythonで出力
 python ${DIR_LIB}/summarize_draw_all_chromosome_result.py -o ${DIR_OUT}/Summary.xlsx --image ${DIR_OUT}/img --name $(echo $SAMPLES | tr ' ' ',') --chromosome $(IFS=,; echo "${CHRs[*]}")
