@@ -6,17 +6,18 @@ option_list <- list(
   make_option(c("-d", "--data"), default="NA", help="data directory"),
   make_option(c("--db"), default="NA", help="database file"),
   make_option(c("-o", "--out"), default="NA", help="output directory"),
-  make_option(c("-c", "--color"), default="NA", help="colors"),
   make_option(c("--sample"), default="NA", help="sample name separated by ,"),
-  make_option(c("--switch"), default="NA", help="sample name of switch pairs, separated by , and : for different combinations ex(A,B:C,D)")
+  make_option(c("--switch"), default="NA", help="sample name of switch pairs, separated by , and : for different combinations ex(1,2:3,4). Specify by number of samples")
   
 )
 opt <- parse_args(OptionParser(option_list=option_list))
 
 DIR <- as.character(opt["data"])
 SAMPLES <- unlist(strsplit(as.character(opt["sample"]), ","))
-COLORS <- unlist(strsplit(as.character(opt["color"]), ","))
 SAMPLE_SWITCH <- strsplit(unlist(strsplit(as.character(opt["switch"]), ":")), ",")
+for(i in 1:length(SAMPLE_SWITCH)){
+  SAMPLE_SWITCH[[i]] <- SAMPLES[as.numeric(SAMPLE_SWITCH[[i]])]
+}
 DB_sample <- as.character(opt["db"])
 DIR_out <- as.character(opt["out"])
 if(substring(DIR, nchar(DIR), nchar(DIR)) != "/"){
