@@ -114,7 +114,7 @@ then
      {
        print i, val[i]
      }
-   }' "$MAP_FILES" > $coveragename
+   }' $MAP_FILES > $coveragename
 fi
 
 
