@@ -109,7 +109,7 @@ results.r <- results.r[order(results.r$PValue),]
 if(NUM == 0){
   results.r <- results.r[1:10,]
 }else{
-  results.r <- results.r[results.r$PValue < 0.05,]
+  results.r <- results.r[results.r$FDR < 0.05,]
 }
 write.table(results.r, file=FILE_output, sep="\t", quote=FALSE, row.names=FALSE, col.names = TRUE, append = FALSE)
 
