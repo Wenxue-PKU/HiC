@@ -30,6 +30,13 @@ Description
 	
 	-x, --organism [human|mouse]
 		organism name
+	
+	--control [read number]
+		minimum required read value for background (default is 1)
+	
+	--FDR [FDR value]
+		FDR cut off. (default is 0.01)
+	
 EOF
 
 }
@@ -39,7 +46,7 @@ get_version(){
 }
 
 SHORT=hvn:r:d:o:x:
-LONG=help,version,name:,resolution:,max:,data:,out:,organism:
+LONG=help,version,name:,resolution:,max:,data:,out:,organism:,control:,FDR:
 PARSED=`getopt --options $SHORT --longoptions $LONG --name "$0" -- "$@"`
 if [[ $? -ne 0 ]]; then
 	exit 2
@@ -80,6 +87,14 @@ while true; do
 			ORGANISM="$2"
 			shift 2
 			;;
+		--control)
+			T_CONTROL="$2"
+			shift 2
+			;;
+		--FDR)
+			FDR="$2"
+			shift 2
+			;;
 		--)
 			shift
 			break
@@ -102,6 +117,8 @@ TIME_STAMP=$(date +"%Y-%m-%d")
 MAX_distance=${MAX_distance:-"2Mb"}
 MAX_distance=${MAX_distance/Mb/000000}
 MAX_distance=${MAX_distance/kb/000}
+T_CONTROL=${T_CONTROL:-1}
+FDR=${FDR:-0.01}
 
 case $ORGANISM in
 	human) CHRs="chr1 chr2 chr3 chr4 chr5 chr6 chr7 chr8 chr9 chr10 chr11 chr12 chr13 chr14 chr15 chr16 chr17 chr18 chr19 chr20 chr21 chr22 chrX" ;;
@@ -112,7 +129,7 @@ esac
 
 DIR_tmp=${FILE_OUT}_tmpDir
 [ ! -e ${DIR_tmp} ] && mkdir ${DIR_tmp} && mkdir ${DIR_tmp}/log ${DIR_tmp}/scores ${DIR_tmp}/img
-UNIQ_ID=$(echo $FILE_OUT | rev | cut -c 1-12 | rev)
+UNIQ_ID=$(echo $FILE_OUT | rev | cut -c 1-20 | rev)
 FILE_excel=${FILE_OUT/.txt/.xlsx}
 FILE_log=${FILE_OUT/.txt/.log}
 
@@ -122,10 +139,10 @@ FILE_log=${FILE_OUT/.txt/.log}
 for CHR in $CHRs
 do
 	FILE_in=${DIR_DATA}/${NAME}/${RESOLUTION}/ICE/${CHR}.rds
-	sbatch -n 4 --job-name=si_${UNIQ_ID}_${CHR} -o "${DIR_tmp}/log/define_significant_pairs_${CHR}.log" --open-mode append --wrap="Rscript2 --vanilla --slave ${DIR_LIB}/Define_all_significant_pairs.R -i ${FILE_in} -o ${DIR_tmp}/scores/${CHR}.txt --max ${MAX_distance}"
+	sbatch -n 4 --job-name=si_${UNIQ_ID}_${CHR} -o "${DIR_tmp}/log/define_significant_pairs_${CHR}.log" --open-mode append --wrap="Rscript --vanilla --slave ${DIR_LIB}/Define_all_significant_pairs.R -i ${FILE_in} -o ${DIR_tmp}/scores/${CHR}.txt --max ${MAX_distance} --control $T_CONTROL --FDR $FDR"
 done
 
-### 結果をまとめてP-valueでソートする
+### 結果をまとめてFDRでソートする
 JOB_ID=($(squeue -o "%j %F" -u htanizawa | grep -e "si_${UNIQ_ID}" | cut -f2 -d' ' | xargs))
 JOB_ID_string=$(IFS=:; echo "${JOB_ID[*]}")
 DEPEND=""; [ -n "$JOB_ID_string" ] && DEPEND="--dependency=afterok:${JOB_ID_string}"
@@ -133,7 +150,7 @@ sbatch -n 1 --job-name=si2_${UNIQ_ID} $DEPEND -o "${FILE_log}" --open-mode appen
 #!/bin/sh
 cd ${DIR_tmp}/scores
 cat chr1.txt | head -n1 > $FILE_OUT
-ls chr*.txt | xargs -n1 | xargs -n1 -I@ sh -c "cat \@ | tail -n+2" | sort -k11,11g >> $FILE_OUT
+ls chr*.txt | xargs -n1 | xargs -n1 -I@ sh -c "cat \@ | tail -n+2" | sort -k12,12g >> $FILE_OUT
 cat ${DIR_tmp}/log/define_significant_pairs_*.log | awk -v OFS='\t' 'BEGIN{Nsig=0; Nall=0}{Nsig+=\$1; Nall+=\$2}END{print Nsig,Nall}'
 EOF
 
@@ -177,7 +194,6 @@ cat $FILE_OUT | awk -v OFS='\t' 'NR>1&&NR<1001{rank=NR-1; print rank,\$0}' >> $F
 cd ${DIR_tmp}/img
 python ${DIR_LIB}/Summarize_significant_pairs.py -i $FILE_excel_data -o ${FILE_excel} -t "${NAME}" --image ${DIR_tmp}/img
 find ${DIR_tmp}/log -type f -empty -delete
-rm -r ${DIR_tmp}
 EEE
 
 EOF
