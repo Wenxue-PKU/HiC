@@ -88,7 +88,7 @@ worksheet.conditional_format(Range, {'type': '3_color_scale',
                                          'max_color': '#FF0000'
 })
 
-Range = "J2:J" + str(len(DATA)+1)
+Range = "K2:K" + str(len(DATA)+1)
 worksheet.conditional_format(Range, {'type': 'cell',
                                          'criteria': '<',
                                          'value': 0.05,
