@@ -123,7 +123,7 @@ binstotal=$(( $total / 50 ))
 threshold=$(( $binstotal * 4 ))
 threshold=$(( $threshold / 5 ))
 
-echo -ne "."
+# echo -ne "."
 newbin=50
 bins1000=$(awk '$3>=1000{sum++}END{if (sum == 0) print 0; else print sum}' $coveragename)
 lowrange=$newbin
@@ -134,7 +134,7 @@ while [ $bins1000 -lt $threshold ]
 do
     lowrange=$newbin
     newbin=$(( $newbin + 1000 ))
-    echo -ne "."
+    # echo -ne "."
     bins1000=$(awk -v x=$newbin '{ 
       val[$1 " " int($2/x)*x]=val[$1 " " int($2/x)*x]+$3
     }
