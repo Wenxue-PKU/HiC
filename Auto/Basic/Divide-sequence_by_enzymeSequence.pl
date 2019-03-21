@@ -9,14 +9,13 @@ use Getopt::Std;
 use Carp qw(croak);
 
 if(@ARGV != 4 or $ARGV[0] eq '--help'){
-	die "Usage : $0 -i [fasta file] -t [recognition sequence]\n";
+	die "Usage : $0 -i [fasta file] -t [recognition sequences separated by ,]\n";
 }
 
 my %opt;
 getopts("i:t:", \%opt);
 my $FastaFile = $opt{i};
-my $recognitionSeq = $opt{t};
-$recognitionSeq = uc($recognitionSeq);
+my @recognitionSeq = map uc, split /,/, $opt{t};
 
 print "#number\tchr\tposition\tlength_before\tlength_after\n";
 my $fh = IO::File->new($FastaFile) or die "cannot open $FastaFile: $!";
@@ -47,9 +46,15 @@ sub parseSeq{
 	my $pos = 0;
 	my $previous = 0;
 	my @locationList = (0);
-	while($pos != -1){
-		$pos = index $seq, $recognitionSeq, $previous;
-		if($pos != -1){
+	while($pos != 9999999999){
+		$pos = 9999999999;
+		foreach my $rr (@recognitionSeq){
+			my $pp = index $seq, $rr, $previous;
+			if($pp != -1 and $pp < $pos){
+				$pos = $pp;
+			}
+		}
+		if($pos != 9999999999){
 			push @locationList, $pos;
 		}
 		$previous = $pos + 1;
