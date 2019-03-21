@@ -15,87 +15,44 @@ use DBI;
 # 各長さについて合計値を求め、それを全read数で割ったものが、２点が相互作用する確率を示したdistance curveができる
 
 if(@ARGV != 6 or $ARGV[0] eq '--help'){
-	die "Usage : $0 -i [fragment.db] -o [output file] -x [organism]\n";
+	die "Usage : $0 -i [fragment.db] -o [output file] -l [file of chromosome length]\n";
 }
 
 my %opt;
-getopts("i:o:x:", \%opt);
+getopts("i:o:l:", \%opt);
 my $FILE_database = $opt{i};
 my $FILE_out = $opt{o};
-my $ORGANISM = $opt{x};
+my $FILE_LENGTH = $opt{l};
 
 #---------------------------------------
 # read chromosome length
 #---------------------------------------
 my %LEN;
-if($ORGANISM eq 'human'){
-	my $FILE_LENGTH = '/wistar/noma/Data/Human_seq/hg19/LENGTH.txt';
-	my $fh_length = IO::File->new($FILE_LENGTH) or die "cannot open $FILE_LENGTH: $!";
-	$fh_length->getline();
-	while($_ = $fh_length->getline()){
-		s/\r?\n//;
-		my ($chr, $len) = split /\t/;
-		$LEN{$chr} = $len;
-	}
-	$fh_length->close();
-}elsif($ORGANISM eq 'human_EBV'){
-	my $FILE_LENGTH = '/wistar/noma/Data/Human_seq/hg19_EBV/LENGTH.txt';
-	my $fh_length = IO::File->new($FILE_LENGTH) or die "cannot open $FILE_LENGTH: $!";
-	while($_ = $fh_length->getline()){
-		s/\r?\n//;
-		my ($chr, $len) = split /\t/;
-		$LEN{$chr} = $len;
-	}
-	$fh_length->close();
-}elsif($ORGANISM eq 'mouse'){
-	my $FILE_LENGTH = '/wistar/noma/Data/Mouse_seq/mm10/LENGTH.txt';
-	my $fh_length = IO::File->new($FILE_LENGTH) or die "cannot open $FILE_LENGTH: $!";
-	while($_ = $fh_length->getline()){
-		s/\r?\n//;
-		my ($chr, $len) = split /\t/;
-		$LEN{$chr} = $len;
-	}
-	$fh_length->close();
-}elsif($ORGANISM eq 'pombe'){
-	my $FILE_LENGTH = '/wistar/noma/Data/S.Pombe_seq/pombase_ASM294v1.18/LENGTH.txt';
-	my $fh_length = IO::File->new($FILE_LENGTH) or die "cannot open $FILE_LENGTH: $!";
-	$fh_length->getline();
-	while($_ = $fh_length->getline()){
-		s/\r?\n//;
-		my ($chr, $len) = split /\t/;
-		$LEN{$chr} = $len;
-	}
-	$fh_length->close();
+my $fh_length = IO::File->new($FILE_LENGTH) or die "cannot open $FILE_LENGTH: $!";
+$fh_length->getline();
+while($_ = $fh_length->getline()){
+	s/\r?\n//;
+	my ($chr, $len) = split /\t/;
+	$LEN{$chr} = $len;
 }
-
+$fh_length->close();
 
 my $fh_out = IO::File->new($FILE_out, 'w') or die "cannot write $FILE_out: $!";
 $fh_out->print(join("\t", "chromosome1", "chromosome2", "distance", "reads", "average", "probability") . "\n");
-
 my $dbh = DBI->connect("dbi:SQLite:dbname=$FILE_database");
-
-
 
 #---------------------------------------
 # chromosomeのリストを取得する
 #---------------------------------------
 my @chrs;
-if($ORGANISM eq 'pombe'){
-	@chrs = qw(I II III);
-}else{
-	my $sth_getChr = $dbh->prepare("select distinct(chr1) from fragment");
-	$sth_getChr->execute();
-	while(my ($c) = $sth_getChr->fetchrow_array()){
-		if(exists $LEN{$c}){
-			push @chrs, $c;
-		}
+my $sth_getChr = $dbh->prepare("select distinct(chr1) from fragment");
+$sth_getChr->execute();
+while(my ($c) = $sth_getChr->fetchrow_array()){
+	if(exists $LEN{$c}){
+		push @chrs, $c;
 	}
-	$sth_getChr->finish();
 }
-
-
-
-
+$sth_getChr->finish();
 
 
 #---------------------------------------
@@ -113,8 +70,8 @@ foreach my $chr(@chrs){
 			next;
 		}
 
-		# 距離が20kb以下だったら2倍にする
-		if(abs($start1 + $end1 - $start2 - $end2)/2 < 20000){
+		# 距離が10kb以下だったら2倍にする
+		if(abs($start1 + $end1 - $start2 - $end2)/2 < 10000){
 			$score *= 2;
 		}
 
@@ -155,8 +112,8 @@ foreach my $chr(@chrs){
 			next;
 		}
 
-		# 距離が20kb以下だったら2倍にする
-		if(abs($start1 + $end1 - $start2 - $end2)/2 < 20000){
+		# 距離が10kb以下だったら2倍にする
+		if(abs($start1 + $end1 - $start2 - $end2)/2 < 10000){
 			$score *= 2;
 		}
 
