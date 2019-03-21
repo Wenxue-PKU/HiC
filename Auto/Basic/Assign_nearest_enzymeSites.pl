@@ -16,18 +16,17 @@ $| = 0;
 #---------------------------------------
 my $unit = 20000;	# section file bin size (20000bp)
 
-if(@ARGV != 12  or $ARGV[0] eq '--help'){
-	die "Usage : $0 -a [sam file 1] -b [sam file 2] -o [output map file] -x [organism] -e [enzyme definition file] -d [enzyme index file]\n";
+if(@ARGV != 10  or $ARGV[0] eq '--help'){
+	die "Usage : $0 -a [sam file 1] -b [sam file 2] -o [output map file] -e [enzyme definition file] -d [enzyme index file]\n";
 }
 
 my %opt;
-getopts("a:b:o:x:e:d:", \%opt);
+getopts("a:b:o:e:d:", \%opt);
 my $FILE_sam1 = $opt{a};
 my $FILE_sam2 = $opt{b};
 my $FILE_map = $opt{o};
-my $ORGANISM = $opt{x};
-my $FILE_ENZYME_index = $opt{e};
-my $FILE_ENZYME_def = $opt{d};
+my $FILE_ENZYME_index = $opt{d};
+my $FILE_ENZYME_def = $opt{e};
 
 #---------------------------------------
 # map format
