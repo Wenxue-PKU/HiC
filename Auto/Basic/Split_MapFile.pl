@@ -12,7 +12,7 @@ $| = 0;
 
 
 if(@ARGV != 6 or $ARGV[0] eq '--help'){
-	die "Usage : $0 -i [map file] -x [target organism (pombe or human) -o [file list]\n";
+	die "Usage : $0 -i [map file] -l [chromosome length] -o [file list]\n";
 }
 
 my %chromosome_length = (
@@ -23,21 +23,16 @@ my %chromosome_length = (
 );
 
 my %opt;
-getopts("i:x:o:", \%opt);
+getopts("i:l:o:", \%opt);
 my $FILE_map = $opt{i};
-my $TARGET_ORGANISM = $opt{x};
+my $CHROMOSOME_LENGTH = $opt{l};
 my $FILE_list = $opt{o};
 my ($name, $dir, $ext) = &fileparse($FILE_map, '\..*');
 my $TMP_PREFIX = $dir . 'tmp_register_' . $name;
 
 
-unless(exists $chromosome_length{$TARGET_ORGANISM}){
-	die "target organism is unknown\n";
-}
-
-
 # ファイルを作成する解像度
-my $RESOLUTION = $chromosome_length{$TARGET_ORGANISM} / 100;
+my $RESOLUTION = $CHROMOSOME_LENGTH / 100;
 
 # ファイルハンドル
 my %FH;

@@ -12,21 +12,13 @@ $| = 0;
 use DBI;
 
 if((@ARGV != 8 and @ARGV != 10) or $ARGV[0] eq '--help'){
-	die "Usage : $0 -i [database] -x [target organism (pombe or human or mouse or pombe_HindIII) -r [restriction site] -o [file list] -m [mapQ threshold (default:10)]\n";
+	die "Usage : $0 -i [database] -l [chromosome length] -o [file list] -m [mapQ threshold (default:10)] -e [enzyme definition file]\n";
 }
 
-my %chromosome_length = (
-	'human' => 3095677412,
-	'human_EBV' => 3157782322,
-	'mouse' => 2725537669,
-	'pombe' => 12571820,
-);
-
 my %opt;
-getopts("i:x:o:r:m:", \%opt);
+getopts("i:l:o:m:e:", \%opt);
 my $FILE_database = $opt{i};
-my $TARGET_ORGANISM = $opt{x};
-my $TARGET_RESTRICTION = $opt{r};
+my $CHROM_LENGTH = $opt{l};
 my $FILE_list = $opt{o};
 my ($name, $dir, $ext) = &fileparse($FILE_database, '\..*');
 my $TMP_PREFIX = $dir . 'tmp_database_' . $name;
@@ -35,33 +27,19 @@ unless(defined $MAPQ_threshold){
 	$MAPQ_threshold = 10;
 }
 
+my $FILE_ENZYME_def = $opt{e};
+
 
 # ファイルを作成する解像度
-my $RESOLUTION = $chromosome_length{$TARGET_ORGANISM} / 100;
+my $RESOLUTION = $CHROM_LENGTH / 100;
 
 #---------------------------------------
-# read Hind III file
+# read restriction information
 #---------------------------------------
-my $FILE_HINDIII_def;
-if($TARGET_RESTRICTION eq 'human'){
-	$FILE_HINDIII_def = '/wistar/noma/Data/Human_seq/hg19/MboI_sites.txt';
-}elsif($TARGET_RESTRICTION eq 'human_EBV'){
-	$FILE_HINDIII_def = '/wistar/noma/Data/Human_seq/hg19_EBV/MboI_sites.txt';
-}elsif($TARGET_RESTRICTION eq 'human_HindIII'){
-	$FILE_HINDIII_def = '/wistar/noma/Data/Human_seq/hg19/HindIII_sites.txt';
-}elsif($TARGET_RESTRICTION eq 'mouse'){
-	$FILE_HINDIII_def = '/wistar/noma/Data/Mouse_seq/mm10/MboI_sites.txt';
-}elsif($TARGET_RESTRICTION eq 'pombe'){
-	$FILE_HINDIII_def = '/wistar/noma/Data/S.Pombe_seq/pombase_ASM294v1.18/MboI_sites.txt';
-}elsif($TARGET_RESTRICTION eq 'pombe_HindIII'){
-	$FILE_HINDIII_def = '/wistar/noma/Data/S.Pombe_seq/pombase_ASM294v1.18/HindIII_sites.txt';
-}else{
-	die "please specify correct organism name\n";
-}
-my %Hinds;
+my %Enzymes;
 my %Chromosomes;
 {
-	my $fh_in = IO::File->new($FILE_HINDIII_def) or die "cannot open $FILE_HINDIII_def: $!";
+	my $fh_in = IO::File->new($FILE_ENZYME_def) or die "cannot open $FILE_ENZYME_def: $!";
 	while($_ = $fh_in->getline()){
 		if(m/^#/){
 			next;
@@ -72,12 +50,12 @@ my %Chromosomes;
 		# 番号0の断片を作っておく
 		if($number == 1){
 			my $id0 = $chr . ':0';
-			$Hinds{$id0} = "1\t$pos";
+			$Enzymes{$id0} = "1\t$pos";
 		}
 
 		my $id = $chr . ':' . $number;
 		my $end = $pos + $after;
-		$Hinds{$id} = "$pos\t$end";
+		$Enzymes{$id} = "$pos\t$end";
 		$Chromosomes{$chr} = 1;
 	}
 	$fh_in->close();
@@ -122,15 +100,15 @@ while(my $ref = $sth->fetchrow_arrayref()){
 	my $id1 = $chr1 . ':' . $restNum1;
 	my $id2 = $chr2 . ':' . $restNum2;
 
-	my ($start1, $end1) = split /\t/, $Hinds{$id1};
-	my ($start2, $end2) = split /\t/, $Hinds{$id2};
+	my ($start1, $end1) = split /\t/, $Enzymes{$id1};
+	my ($start2, $end2) = split /\t/, $Enzymes{$id2};
 
 
 	my $middle1 = ($start1 + $end1) / 2;
 	my $middle2 = ($start2 + $end2) / 2;
 
-	# 20kb以下の距離で、向きが異なる組み合わせについては除去する
-	if($chr1 eq $chr2 and abs($middle1 - $middle2) < 20000 and $direction1 ne $direction2){
+	# 10kb以下の距離で、向きが異なる組み合わせについては除去する
+	if($chr1 eq $chr2 and abs($middle1 - $middle2) < 10000 and $direction1 ne $direction2){
 		next;
 	}
 
