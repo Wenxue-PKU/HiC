@@ -7,7 +7,9 @@ option_list <- list(
   make_option(c("-i", "--in"),help="matrix file(s)"),
   make_option(c("-o", "--out"),default="NA", help="output file"),
   make_option(c("--min"), default="20000", help="minimum distance to check(default : 20kb)"),
-  make_option(c("--max"), default="2000000", help="maximum distance to check (default : 2Mb)")
+  make_option(c("--max"), default="2000000", help="maximum distance to check (default : 2Mb)"),
+  make_option(c("--control"), default=1, help="minimum required average read for control region"),
+  make_option(c("--FDR"), default=0.01, help="threshold of FDR")
 )
 opt <- parse_args(OptionParser(option_list=option_list))
 
@@ -19,6 +21,10 @@ FILE_out <- as.character(opt["out"])
 FILE_matrix <- as.character(opt["in"])
 T_max <- as.numeric(as.character(opt["max"]))
 T_min <- as.numeric(as.character(opt["min"]))
+T_control <- as.numeric(as.character(opt["control"]))
+FDR <- as.numeric(as.character(opt["FDR"]))
+
+
 FILE_object <- sub(".matrix", ".rds", FILE_matrix)
 if(!file.exists(FILE_object)){
   map <- as.matrix(read.table(FILE_matrix, header=TRUE, check.names = FALSE))
@@ -136,10 +142,10 @@ for(d in MIN_NUM:MAX_NUM){
 rm(df, map, index3)
 
 NUM_all <- D_table %>% nrow()
-D_table <- D_table %>% mutate(qval=p.adjust(pval, method = "BH")) %>% filter(qval < 0.01)
+D_table <- D_table %>% mutate(qval=p.adjust(pval, method = "BH")) %>% filter(qval < FDR)
 
 ### 周りのmatrixによるスコアと、control >= 1というでもfiltering
-D_table <- D_table %>% filter(okay == 1 & control >= 1) %>% select(-okay)
+D_table <- D_table %>% filter(okay == 1 & control >= T_control) %>% select(-okay)
 
 NUM_sig <- D_table %>% nrow()
 cat(paste(NUM_sig, NUM_all, sep="\t"))
