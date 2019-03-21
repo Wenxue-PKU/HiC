@@ -1,23 +1,7 @@
 #!/bin/bash
 
 PROGRAM_CIGAR=${DIR_LIB}/CigarFilter.pl
-
-case $ORGANISM in
-	pombe) BOWTIE_TARGET=ASM294v2.19
-	       export BOWTIE2_INDEXES=/wistar/noma/Data/S.Pombe_seq/pombase_ASM294v1.18 ;;
-	human) BOWTIE_TARGET=hg19
-	       export BOWTIE2_INDEXES=/wistar/noma/Data/Human_seq/hg19 ;;
-	human_EBV) BOWTIE_TARGET=hg19_EBV
-	       export BOWTIE2_INDEXES=/wistar/noma/Data/Human_seq/hg19_EBV ;;
-	mouse) BOWTIE_TARGET=mm10
-	       export BOWTIE2_INDEXES=/wistar/noma/Data/Mouse_seq/mm10 ;;
-	mat)   BOWTIE_TARGET=mat
-	       export BOWTIE2_INDEXES=/wistar/noma/Data/S.Pombe_seq/MatingTypeRegion ;;
-	*)     echo "Please specify correct organism"
-	       eixt 1 ;;
-esac
-
-
+export BOWTIE2_INDEXES=${BOWTIE2_INDEXES}
 cd ${DIR_DATA}
 
 echo -n "alignment of ${NAME}.fastq"
