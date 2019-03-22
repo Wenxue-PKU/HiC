@@ -14,6 +14,7 @@ option_list <- list(
   make_option(c("--start"), default="NA", help="start position for drawing"),
   make_option(c("--end"), default="NA", help="end position for drawing"),
   make_option(c("--min"), default=0, help="minimum distance to drawing"),
+  make_option(c("--bottom"), default="TRUE", help="draw bottom (TRUE) or not (FALSE)"),
   make_option(c("--color"), default="grey30", help="colors")
 )
 opt <- parse_args(OptionParser(option_list=option_list))
@@ -23,17 +24,21 @@ suppressWarnings(suppressMessages(library(dplyr)))
 FILE_in <- as.character(opt["in"])
 FILE_out <- as.character(opt["out"])
 CHR <- as.character(opt["chr"])
-START <- as.character(opt["start"])
-END <- as.character(opt["end"])
+START <- as.numeric(as.character(opt["start"]))
+END <- as.numeric(as.character(opt["end"]))
 MIN_dis <- as.numeric(as.character(opt["min"]))
 COLOR <- as.character(opt["color"])
 COLOR <- adjustcolor(COLOR, alpha.f = 0.4)
+FLAG_bottom <- eval(parse(text=as.character(opt["bottom"])))
 
 getArchValues <- function(p1, p2){
   Px <- seq(p1, p2, length.out = 100)
   radius <- abs(p2 - p1)/2
   middle <- (p1 + p2)/2
   Py <- sqrt(radius**2 - (Px-middle)**2)
+  if(FLAG_bottom){
+    Py <- Py * -1
+  }
   out <- data.frame(x=Px, y=Py, stringsAsFactors = FALSE)
   out
 }
@@ -83,10 +88,15 @@ if(nrow(D_table) > 2000){
   q()
 }
 
-png(file=FILE_out, width=1000, height=500, units="px", bg="transparent")
+png(file=FILE_out, width=800, height=400, units="px", bg="transparent")
 par(oma=c(0,0,0,0), mar=c(0,0,0,0))
-plot(c(START, END), c(0, END-START), type='n', xlab="", ylab="", xaxs="i", yaxs="i",bty="n", axes=F)
-dev.off()
+Ymax <- (END-START)/2
+if(FLAG_bottom){
+  Ymax <- Ymax * -1
+}
+plot(c(START, END), c(0, Ymax), type='n', xlab="", ylab="", xaxs="i", yaxs="i",bty="n", axes=F)
+dummy <- sapply(1:nrow(D_table), drawEach)
+dummy <- dev.off()
 
 
 
