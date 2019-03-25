@@ -46,57 +46,57 @@ SHORT=hvd:n:x:r:o:m:q:
 LONG=help,version,directory:,name:,organism:,restriction:,log:,mapq:,fastqc:
 PARSED=`getopt --options $SHORT --longoptions $LONG --name "$0" -- "$@"`
 if [[ $? -ne 0 ]]; then
-    exit 2
+	exit 2
 fi
 eval set -- "$PARSED"
 
 while true; do
-    case "$1" in
-        -h|--help)
-            get_usage
-            exit 1
-            ;;
-        -v|--version)
-            get_version
-            exit 1
-            ;;
-        -d|--directory)
-            DIR_DATA="$2"
-            shift 2
-            ;;
-        -n|--name)
-            NAME="$2"
-            shift 2
-            ;;
-        -x|--organism)
-            ORGANISM="$2"
-            shift 2
-            ;;
-        -r|--restriction)
-            RESTRICTION="$2"
-            shift 2
-            ;;
-        -o|--log)
-            DIR_LOG="$2"
-            shift 2
-            ;;
-        -m|--mapq)
-            MAPQ_THRESHOLD="$2"
-            shift 2
-            ;;
-        -q|--fastqc)
-            FLAG_fastqc="$2"
-            shift 2
-            ;;
-        --)
-            shift
-            break
-            ;;
-        *)
-            echo "Programming error"
-            exit 3
-            ;;
-    esac
+	case "$1" in
+		-h|--help)
+			get_usage
+			exit 1
+			;;
+		-v|--version)
+			get_version
+			exit 1
+			;;
+		-d|--directory)
+			DIR_DATA="$2"
+			shift 2
+			;;
+		-n|--name)
+			NAME="$2"
+			shift 2
+			;;
+		-x|--organism)
+			ORGANISM="$2"
+			shift 2
+			;;
+		-r|--restriction)
+			RESTRICTION="$2"
+			shift 2
+			;;
+		-o|--log)
+			DIR_LOG="$2"
+			shift 2
+			;;
+		-m|--mapq)
+			MAPQ_THRESHOLD="$2"
+			shift 2
+			;;
+		-q|--fastqc)
+			FLAG_fastqc="$2"
+			shift 2
+			;;
+		--)
+			shift
+			break
+			;;
+		*)
+			echo "Programming error"
+			exit 3
+			;;
+	esac
 done
 
 DIR_LIB=$(dirname $0)
@@ -114,43 +114,55 @@ case $ORGANISM in
 	pombe)	BOWTIE_TARGET=ASM294v2.19
 			BOWTIE2_INDEXES=/wistar/noma/Data/S.Pombe_seq/pombase_ASM294v1.18
 			CHROM_LENGTH=12571820
+			FILE_CHROME_LENGTH=/wistar/noma/Data/S.Pombe_seq/pombase_ASM294v1.18/LENGTH.txt
 			case $RESTRICTION in 
 				HindIII)	FILE_enzyme_index=/wistar/noma/Data/S.Pombe_seq/pombase_ASM294v1.18/Sectioning_HindIII.txt
 							FILE_enzyme_def=/wistar/noma/Data/S.Pombe_seq/pombase_ASM294v1.18/HindIII_sites.txt ;;
 				MboI)	FILE_enzyme_index=/wistar/noma/Data/S.Pombe_seq/pombase_ASM294v1.18/Sectioning_MboI.txt
 						FILE_enzyme_def=/wistar/noma/Data/S.Pombe_seq/pombase_ASM294v1.18/MboI_sites.txt ;;
+				*)	echo "$RESTRICTION is not registered for $ORGANISM"
+					exit ;;
 			esac
 			;;
 	human)	BOWTIE_TARGET=hg19
 			BOWTIE2_INDEXES=/wistar/noma/Data/Human_seq/hg19
 			CHROM_LENGTH=3095677412
+			FILE_CHROME_LENGTH=/wistar/noma/Data/Human_seq/hg19/LENGTH.txt
 			case $RESTRICTION in 
 				HindIII)	FILE_enzyme_index=/wistar/noma/Data/Human_seq/hg19/Sectioning_HindIII.txt
 							FILE_enzyme_def=/wistar/noma/Data/Human_seq/hg19/HindIII_sites.txt ;;
 				MboI)	FILE_enzyme_index=/wistar/noma/Data/Human_seq/hg19/Sectioning_MboI.txt
 						FILE_enzyme_def=/wistar/noma/Data/Human_seq/hg19/MboI_sites.txt ;;
+				*)	echo "$RESTRICTION is not registered for $ORGANISM"
+					exit ;;
 			esac
 			;;
 	human_EBV)	BOWTIE_TARGET=hg19_EBV
 			BOWTIE2_INDEXES=/wistar/noma/Data/Human_seq/hg19_EBV
 			CHROM_LENGTH=3157782322
+			FILE_CHROME_LENGTH=/wistar/noma/Data/Human_seq/hg19_EBV/LENGTH.txt
 			case $RESTRICTION in 
 				MboI)	FILE_enzyme_index=/wistar/noma/Data/Human_seq/hg19_EBV/Sectioning_MboI.txt
 						FILE_enzyme_def=/wistar/noma/Data/Human_seq/hg19_EBV/MboI_sites.txt;;
 				MboI-HinfI)	FILE_enzyme_index=/wistar/noma/Data/Human_seq/hg19_EBV/Sectioning_MboI-HinfI.txt
 						FILE_enzyme_def=/wistar/noma/Data/Human_seq/hg19_EBV/MboI-HinfI_sites.txt ;;
+				*)	echo "$RESTRICTION is not registered for $ORGANISM"
+					exit ;;
 			esac
 			;;
 	mouse)	BOWTIE_TARGET=mm10
 			BOWTIE2_INDEXES=/wistar/noma/Data/Mouse_seq/mm10
 			CHROM_LENGTH=2725537669
+			FILE_CHROME_LENGTH=/wistar/noma/Data/Mouse_seq/mm10/LENGTH.txt
 			case $RESTRICTION in 
 				MboI)	FILE_enzyme_index=/wistar/noma/Data/Mouse_seq/mm10/Sectioning_MboI.txt
 						FILE_enzyme_def=/wistar/noma/Data/Mouse_seq/mm10/MboI_sites.txt ;;
+				*)	echo "$RESTRICTION is not registered for $ORGANISM"
+					exit ;;
 			esac
 			;;
-	*) echo "Please specify correct organism"
-			eixt 1 ;;
+	*)	echo "Please specify correct organism"
+		eixt 1 ;;
 esac
 
 
@@ -158,37 +170,36 @@ esac
 [ "$FLAG_fastqc" = "TRUE" ] && [ ! -e "${DIR_DATA}/fastqc" ] && mkdir "${DIR_DATA}/fastqc"
 
 
-#-----------------------------------------------
-# Alignment
-#-----------------------------------------------
-sbatch -n 12 --job-name=aln_${NAME} -o "${DIR_LOG}/${TIME_STAMP}_Alignment_${NAME}_1.log" --export=NAME="${NAME}_1",DIR_LIB="${DIR_LIB}",DIR_DATA="${DIR_DATA}",BOWTIE_TARGET="${BOWTIE_TARGET}",BOWTIE2_INDEXES="${BOWTIE2_INDEXES}" --open-mode append ${DIR_LIB}/Alignment_with_trimming.sh
-sbatch -n 12 --job-name=aln_${NAME} -o "${DIR_LOG}/${TIME_STAMP}_Alignment_${NAME}_2.log" --export=NAME="${NAME}_2",DIR_LIB="${DIR_LIB}",DIR_DATA="${DIR_DATA}",BOWTIE_TARGET="${BOWTIE_TARGET}",BOWTIE2_INDEXES="${BOWTIE2_INDEXES}" --open-mode append ${DIR_LIB}/Alignment_with_trimming.sh
+# #-----------------------------------------------
+# # Alignment
+# #-----------------------------------------------
+# sbatch -n 12 --job-name=aln_${NAME} -o "${DIR_LOG}/${TIME_STAMP}_Alignment_${NAME}_1.log" --export=NAME="${NAME}_1",DIR_LIB="${DIR_LIB}",DIR_DATA="${DIR_DATA}",BOWTIE_TARGET="${BOWTIE_TARGET}",BOWTIE2_INDEXES="${BOWTIE2_INDEXES}" --open-mode append ${DIR_LIB}/Alignment_with_trimming.sh
+# sbatch -n 12 --job-name=aln_${NAME} -o "${DIR_LOG}/${TIME_STAMP}_Alignment_${NAME}_2.log" --export=NAME="${NAME}_2",DIR_LIB="${DIR_LIB}",DIR_DATA="${DIR_DATA}",BOWTIE_TARGET="${BOWTIE_TARGET}",BOWTIE2_INDEXES="${BOWTIE2_INDEXES}" --open-mode append ${DIR_LIB}/Alignment_with_trimming.sh
 
 
-#-----------------------------------------------
-# fastqc
-#-----------------------------------------------
-[ "$FLAG_fastqc" = "TRUE" ] &&  [ ! -e ${DIR_DATA}/fastqc/${NAME}_fastqc ] && sbatch -n 12 --job-name=fastqc_${NAME}_1 -o "${DIR_LOG}/${TIME_STAMP}_fastqc_${NAME}_1.log" --open-mode append --wrap="cd ${DIR_DATA}; /applications/fastqc/current/fastqc -o fastqc/ --nogroup -t 12 ${NAME}_1.fastq" && sbatch -n 12 --job-name=fastqc_${NAME}_2 -o "${DIR_LOG}/${TIME_STAMP}_fastqc_${NAME}_2.log" --open-mode append --wrap="cd ${DIR_DATA}; /applications/fastqc/current/fastqc -o fastqc/ --nogroup -t 12 ${NAME}_2.fastq"
+# #-----------------------------------------------
+# # fastqc
+# #-----------------------------------------------
+# [ "$FLAG_fastqc" = "TRUE" ] &&  [ ! -e ${DIR_DATA}/fastqc/${NAME}_fastqc ] && sbatch -n 12 --job-name=fastqc_${NAME}_1 -o "${DIR_LOG}/${TIME_STAMP}_fastqc_${NAME}_1.log" --open-mode append --wrap="cd ${DIR_DATA}; /applications/fastqc/current/fastqc -o fastqc/ --nogroup -t 12 ${NAME}_1.fastq" && sbatch -n 12 --job-name=fastqc_${NAME}_2 -o "${DIR_LOG}/${TIME_STAMP}_fastqc_${NAME}_2.log" --open-mode append --wrap="cd ${DIR_DATA}; /applications/fastqc/current/fastqc -o fastqc/ --nogroup -t 12 ${NAME}_2.fastq"
 
 
 
-### assign to nearest restriction enzyme site
-# output: <NAME>.map
-# +の向きの場合、そのまま、-の向きの場合、aglinした部位からreadの長さ分だけ足した値に修正する
-# RepeatとUniqueは、XS:iがあるか無いかで判断
-# 最も近い制限酵素部位を出力する
-# +の向きの場合、制限酵素からの位置に関わらずL,-の向きの場合,Rと出力する
-JOB_ID=($(squeue -o "%j %F" -u htanizawa | grep -e "aln_${NAME}" | cut -f2 -d' ' | xargs))
-JOB_ID_string=$(IFS=:; echo "${JOB_ID[*]}")
-DEPEND=""; [ -n "$JOB_ID_string" ] && DEPEND="--dependency=afterok:${JOB_ID_string}"
-sbatch -n 1 --job-name=map_${NAME} $DEPEND -o "${DIR_LOG}/${TIME_STAMP}_make_map_${NAME}.log" --open-mode append --wrap="cd ${DIR_DATA}; perl ${DIR_LIB}/Assign_nearest_enzymeSites.pl -a ${NAME}_1.sam -b ${NAME}_2.sam -o ${NAME}.map -e ${FILE_enzyme_def} -d ${FILE_enzyme_index}"
+# ### assign to nearest restriction enzyme site
+# # output: <NAME>.map
+# # +の向きの場合、そのまま、-の向きの場合、aglinした部位からreadの長さ分だけ足した値に修正する
+# # RepeatとUniqueは、XS:iがあるか無いかで判断
+# # 最も近い制限酵素部位を出力する
+# # +の向きの場合、制限酵素からの位置に関わらずL,-の向きの場合,Rと出力する
+# JOB_ID=($(squeue -o "%j %F" -u htanizawa | grep -e "aln_${NAME}" | cut -f2 -d' ' | xargs))
+# JOB_ID_string=$(IFS=:; echo "${JOB_ID[*]}")
+# DEPEND=""; [ -n "$JOB_ID_string" ] && DEPEND="--dependency=afterok:${JOB_ID_string}"
+# sbatch -n 1 --job-name=map_${NAME} $DEPEND -o "${DIR_LOG}/${TIME_STAMP}_make_map_${NAME}.log" --open-mode append --wrap="cd ${DIR_DATA}; perl ${DIR_LIB}/Assign_nearest_enzymeSites.pl -a ${NAME}_1.sam -b ${NAME}_2.sam -o ${NAME}.map -e ${FILE_enzyme_def} -d ${FILE_enzyme_index}"
 
 
 
 #-----------------------------------------------
 # Sort map file
 #-----------------------------------------------
-
 ### split files
 # 染色体全体を100に分割し、左のreadの場所に応じてファイルを約100個出力する。ファイルの名前を<NAME>_list.txtとして出力
 # 片方でもalignできなかったもの(制限酵素を特定できなかったものも含めて)は除去
@@ -231,6 +242,10 @@ sbatch -n 1 --job-name=remove_${NAME} $DEPEND -o "${DIR_LOG}/${TIME_STAMP}_sort_
 sbatch -N 1 -n 1 --exclusive=user --job-name=db_${NAME} $DEPEND -o "${DIR_LOG}/${TIME_STAMP}_db_${NAME}.log" --open-mode append --wrap="cd ${DIR_DATA}; perl ${DIR_LIB}/Map2database.pl -i ${NAME}_sort.map -o ${NAME}.db"
 
 
+#-----------------------------------------------
+# HiC mapの解像度
+#-----------------------------------------------#==============================================================
+sbatch -n 1 --job-name=resolution_${NAME} $DEPEND  -o "${DIR_LOG}/${TIME_STAMP}_HiCmap_resolution_${NAME}.log" --open-mode append ${DIR_LIB}/../../Statistics/HiCmap_resolution.sh -L $CHROM_LENGTH --count ${DIR_DATA}/${NAME}_count_for_resolution.txt
 
 #-----------------------------------------------
 # read数を調べる
@@ -242,8 +257,6 @@ JOB_ID_string=$(IFS=:; echo "${JOB_ID[*]}")
 DEPEND=""; [ -n "$JOB_ID_string" ] && DEPEND="--dependency=afterok:${JOB_ID_string}"
 sbatch -n 1 --job-name=count_${NAME} $DEPEND -o "${DIR_LOG}/${TIME_STAMP}_count_${NAME}.log" --export=SAMPLE="${NAME}",DIR_DATA="${DIR_DATA}" --open-mode append ${DIR_LIB}/Count_reads.sh
 
-
-
 #-----------------------------------------------
 # <NAME>.dbから<NAME>_fragment.dbを作る
 #-----------------------------------------------
@@ -252,9 +265,9 @@ sbatch -n 1 --job-name=count_${NAME} $DEPEND -o "${DIR_LOG}/${TIME_STAMP}_count_
 # 制限酵素部位が見つからないデータは削除する
 # 制限酵素部位と、alignした部位を比較して、+なのに制限酵素部位の右にある場合は次の制限酵素に移動しなおし、-なのに制限酵素の左にある場合は前の制限酵素に移動しなおす
 # 制限酵素部位ではなく、制限酵素断片のIDに直す(場所がLの場合はIDを１つ減らす）
-# 20kb以内の距離で、向きが異なるペアについては除去する
+# 10kb以内の距離で、向きが異なるペアについては除去する
 # 染色体を１００に分割し、左の断片の中心位置のbinを基準に異なるファイルに出力する。出力したファイルのリストを<NAME>_list.txtとして出力する
-sbatch -n 1 --job-name=DBsp_${NAME} $DEPEND -o "${DIR_LOG}/${TIME_STAMP}_create_fragmentdb_${NAME}.log" --open-mode append --wrap="cd ${DIR_DATA}; perl ${DIR_LIB}/Split_database.pl -i ${NAME}.db -r ${RESTRICTION} -o ${NAME}_list.txt -m ${MAPQ_THRESHOLD} -e ${FILE_enzyme_def}"
+sbatch -n 1 --job-name=DBsp_${NAME} $DEPEND -o "${DIR_LOG}/${TIME_STAMP}_create_fragmentdb_${NAME}.log" --open-mode append --wrap="cd ${DIR_DATA}; perl ${DIR_LIB}/Split_database.pl -i ${NAME}.db -l ${CHROM_LENGTH} -o ${NAME}_list.txt -m ${MAPQ_THRESHOLD} -e ${FILE_enzyme_def}"
 
 
 ### count duplicated number
@@ -291,7 +304,7 @@ sbatch -N 1 -n 1 --exclusive=user --job-name=DBreg_${NAME} $DEPEND -o "${DIR_LOG
 JOB_ID=($(squeue -o "%j %F" -u htanizawa | grep -e "DBreg_${NAME}" | cut -f2 -d' ' | xargs))
 JOB_ID_string=$(IFS=:; echo "${JOB_ID[*]}")
 DEPEND=""; [ -n "$JOB_ID_string" ] && DEPEND="--dependency=afterok:${JOB_ID_string}"
-sbatch -n 1 --job-name=distance_${NAME} $DEPEND -o "${DIR_LOG}/${TIME_STAMP}_distanceCurve_${NAME}.log" --open-mode append --wrap="cd ${DIR_DATA}; [ ! -e ${NAME}_distance.txt ] &&  perl ${DIR_LIB}/Create_distanceNormalize_data.pl -i ${NAME}_fragment.db -x ${ORGANISM} -o ${NAME}_distance.txt;"
+sbatch -n 1 --job-name=distance_${NAME} $DEPEND -o "${DIR_LOG}/${TIME_STAMP}_distanceCurve_${NAME}.log" --open-mode append --wrap="cd ${DIR_DATA}; [ ! -e ${NAME}_distance.txt ] &&  perl ${DIR_LIB}/Create_distanceNormalize_data.pl -i ${NAME}_fragment.db -l ${FILE_CHROME_LENGTH} -o ${NAME}_distance.txt;"
 
 
 
