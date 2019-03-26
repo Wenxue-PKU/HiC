@@ -113,7 +113,6 @@ do
 	START=$(sqlite3 ${DB_loc} "select start from loc where id='${id}'")
 	END=$(sqlite3 ${DB_loc} "select end from loc where id='${id}'")
 
-	xvfb-run Rscript --vanilla --slave ${DIR_LIB}/Draw_arch.R -i ${FILE_arch} --start $START --end $END --min ${MIN} --color ${COLOR} -o ${DIR_OUT}/img/${id}_${NAME}_arch.png
-
-	# sbatch -n 4 --job-name=${id}_${NAME} $(sq --node) -o "${DIR_OUT}/log/${TIME_STAMP}_arch_graph_for_${id}_${NAME}.log" --open-mode append --wrap="Rscript2 --vanilla --slave ${DIR_LIB}/Draw_arch.R -i ${FILE_arch} --start $START --end $END --min ${MIN} --color ${COLOR} -o ${DIR_OUT}/img/${id}_${NAME}_arch.png"
+	# xvfb-run Rscript --vanilla --slave ${DIR_LIB}/Draw_arch.R -i ${FILE_arch} --start $START --end $END --min ${MIN} --color ${COLOR} -o ${DIR_OUT}/img/${id}_${NAME}_arch.png
+	sbatch -n 4 --job-name=${id}_${NAME} $(sq --node) -o "${DIR_OUT}/log/${TIME_STAMP}_arch_graph_for_${id}_${NAME}.log" --open-mode append --wrap="Rscript --vanilla --slave ${DIR_LIB}/Draw_arch.R -i ${FILE_arch} --start $START --end $END --min ${MIN} --color ${COLOR} -o ${DIR_OUT}/img/${id}_${NAME}_arch.png"
 done
