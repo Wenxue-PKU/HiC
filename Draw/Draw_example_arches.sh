@@ -30,14 +30,18 @@ Description
 	-m, --min [minimum distance to draw]
 		minimum distance for drawing. default 50000 (50kb)
 
-	-c, --color [color]
+	-c, --color [color or gentle]
 		color for drawing. default grey30
+	
+	--score [target column of score]
+		based on the column of this value, arch color were change
+	
 EOF
 
 }
 
 SHORT=hn:i:o:l:m:c:
-LONG=help,name:,in:,out:,location:,min:,color:
+LONG=help,name:,in:,out:,location:,min:,color:,score:
 PARSED=`getopt --options $SHORT --longoptions $LONG --name "$0" -- "$@"`
 if [[ $? -ne 0 ]]; then
 	exit 2
@@ -74,6 +78,10 @@ while true; do
 			COLOR="$2"
 			shift 2
 			;;
+		--score)
+			TARGET_COLUMN="$2"
+			shift 2
+			;;
 		--)
 			shift
 			break
@@ -94,6 +102,7 @@ TIME_STAMP=$(date +"%Y-%m-%d")
 [ ! -e "${FILE_location}" ] && echo "Location file is not exists" && exit 1
 MIN=${MIN:-50000}
 COLOR=${COLOR:-grey30}
+TARGET_COLUMN=${TARGET_COLUMN:-NA}
 
 #==============================================================
 # 描画する領域をデータベースに登録
@@ -103,7 +112,7 @@ DB_loc=${FILE_location/.txt/.db}
 
 
 #==============================================================
-# Drawing HiC map 
+# Drawing Arch
 #==============================================================
 [ ! -e ${DIR_OUT}/img ] && mkdir ${DIR_OUT}/img
 [ ! -e ${DIR_OUT}/log ] && mkdir ${DIR_OUT}/log
@@ -114,5 +123,5 @@ do
 	END=$(sqlite3 ${DB_loc} "select end from loc where id='${id}'")
 
 	# xvfb-run Rscript --vanilla --slave ${DIR_LIB}/Draw_arch.R -i ${FILE_arch} --start $START --end $END --min ${MIN} --color ${COLOR} -o ${DIR_OUT}/img/${id}_${NAME}_arch.png
-	sbatch -n 4 --job-name=${id}_${NAME} $(sq --node) -o "${DIR_OUT}/log/${TIME_STAMP}_arch_graph_for_${id}_${NAME}.log" --open-mode append --wrap="Rscript --vanilla --slave ${DIR_LIB}/Draw_arch.R -i ${FILE_arch} --start $START --end $END --min ${MIN} --color ${COLOR} -o ${DIR_OUT}/img/${id}_${NAME}_arch.png"
+	sbatch -n 4 --job-name=${id}_${NAME}_arch $(sq --node) -o "${DIR_OUT}/log/${TIME_STAMP}_arch_graph_for_${id}_${NAME}.log" --open-mode append --wrap="Rscript --vanilla --slave ${DIR_LIB}/Draw_arch.R -i ${FILE_arch} --chr ${CHR} --start $START --end $END --min ${MIN} --color ${COLOR} --score ${TARGET_COLUMN} -o ${DIR_OUT}/img/${id}_${NAME}_arch.png"
 done
