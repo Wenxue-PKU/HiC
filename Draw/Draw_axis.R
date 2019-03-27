@@ -8,13 +8,15 @@ option_list <- list(
   make_option(c("--end"), default="1000", help="end position. all for end of the chromosome"),
   make_option(c("--width"), default="NA", help="width of picture"),
   make_option(c("--height"), default="NA", help="height of picture"),
-  make_option(c("--position"), default="bottom", help="bottom or top axis position")
+  make_option(c("--position"), default="bottom", help="bottom or top axis position"),
+  make_option(c("--cairo"), default="TRUE", help="use cairo for output")
 )
 opt <- parse_args(OptionParser(option_list=option_list))
 
 CHR <- as.character(opt["chr"])
 START <- as.numeric(as.character(opt["start"]))
 END <- as.numeric(as.character(opt["end"]))
+FLAG_cairo <- eval(parse(text=as.character(opt["cairo"])))
 
 FILE_OUT <- as.character(opt["out"])
 if(as.character(opt["height"])=="NA"){
@@ -37,7 +39,13 @@ if(sum((grep("\\.eps$", FILE_OUT))) == 1){
   postscript(file=FILE_OUT, horizontal=FALSE, onefile=FALSE, paper="special", height=h, width=w, family="Helvetica")
 }
 if(sum((grep("\\.png$", FILE_OUT))) == 1){
-  png(filename=FILE_OUT, width=w, height=h)
+  
+  if(FLAG_cairo){
+    suppressWarnings(suppressMessages(library(Cairo)))
+    CairoPNG(FILE_OUT, width=w, height=h)
+  }else{
+    png(filename=FILE_OUT, width=w, height=h)
+  }
 }
 if(sum((grep("\\.pdf$", FILE_OUT))) == 1){
   if(w > 100){
