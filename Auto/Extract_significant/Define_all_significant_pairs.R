@@ -14,8 +14,6 @@ option_list <- list(
 opt <- parse_args(OptionParser(option_list=option_list))
 
 suppressWarnings(suppressMessages(library(dplyr)))
-suppressWarnings(suppressMessages(library(ggplot2)))
-suppressWarnings(suppressMessages(library(cowplot)))
 
 FILE_out <- as.character(opt["out"])
 FILE_matrix <- as.character(opt["in"])
@@ -70,7 +68,7 @@ mask <- data.frame(
 mask <- as.matrix(mask)
 mask_all <- which(mask>-2, arr.ind = TRUE)
 mask_center <- which(mask<0, arr.ind = TRUE)
-mask_surround <- which(mask>0, arr.ind = TRUE)
+mask_surround <- which(mask==1, arr.ind = TRUE)
 mask_leftBottom <- which(mask==2, arr.ind = TRUE)
 checkSurrounded <- function(i,j){
   ### -6するのは中心をずらすため
@@ -95,13 +93,13 @@ checkSurrounded <- function(i,j){
     if(!(FLAG_fill && FLGA_center)){
       0
     }else{
-      ### 周りのスコアよりも中央付近のスコアが高い
+      ### 周りのスコアよりもスコアが高い
       sss_surround <- as.numeric(map[index_surround])
-      FLAG_surround <- mean(sss_surround, na.rm = TRUE) > mean(sss_center, na.rm = TRUE)
+      FLAG_surround <- max(sss_surround, na.rm = TRUE) > mean(sss_center, na.rm = TRUE)
       if(FLAG_surround){
         0
       }else{
-        ### Left bottom cornerよりも高い
+        ### Left bottom cornerの平均値よりも高い
         sss_leftBottom <- as.numeric(map[index_leftBottom])
         FLAG_leftBottom <- mean(sss_leftBottom, na.rm = TRUE) < sss_middle
         if(FLAG_leftBottom){
@@ -139,16 +137,60 @@ for(d in MIN_NUM:MAX_NUM){
     D_table <- rbind(D_table, df)
   }
 }
-rm(df, map, index3)
+rm(df, index1, index2, index3, Okay, scores, Pvalues)
 
-NUM_all <- D_table %>% nrow()
+cat(paste("Total target: ", D_table %>% nrow(), "\n"))
 D_table <- D_table %>% mutate(qval=p.adjust(pval, method = "BH")) %>% filter(qval < FDR)
 
-### 周りのmatrixによるスコアと、control >= 1というでもfiltering
+### 周りのmatrixによるスコアと、control >= 1でもfiltering
 D_table <- D_table %>% filter(okay == 1 & control >= T_control) %>% select(-okay)
+cat(paste("Filtered number: ", D_table %>% nrow(), "\n"))
 
-NUM_sig <- D_table %>% nrow()
-cat(paste(NUM_sig, NUM_all, sep="\t"))
+
+#=============================================
+# 周りの領域をscanしてピークとなる領域を検出
+#=============================================
+# ### 中心から5x5の範囲のスコアを求める
+# getScore <- function(i,j){
+#   list_x <- max(c(1, i - 5)):min(c(i + 5, nrow(map)))
+#   list_y <- max(c(1, j - 5)):min(c(j+ 5, nrow(map)))
+#   comb <- expand.grid(list_x, list_y)
+#   index <- cbind(as.numeric(comb[,1]), as.numeric(comb[,2]))
+#   score <- mean(as.numeric(map[index]), na.rm = TRUE)
+#   score
+# }
+
+### 最大のスコアを持つものに入れ替える
+D_table2 <- NULL
+for(k in 1:nrow(D_table)){
+  cen_x <- D_table[k,"id1"]
+  cen_y <- D_table[k,"id2"]
+  list_x <- max(c(1, cen_x - 10)):min(c(cen_x + 10, nrow(map)))
+  list_y <- max(c(1, cen_y - 10)):min(c(cen_y + 10, nrow(map)))
+  comb <- expand.grid(list_x, list_y)
+  comb <- data.frame(id1=as.integer(comb[,1]), id2=as.integer(comb[,2]), stringsAsFactors = FALSE)
+  comb <- dplyr::left_join(comb, D_table, by=c("id1", "id2"))
+  comb <- comb %>% filter(!is.na(qval))
+  # wrapper_for_getScore <- function(m){
+  #   # getScore(comb[m,"id1"], comb[m,"id2"])
+  #   map[comb[m,"id1"], comb[m,"id2"]]
+  # }
+  # scanScore <- sapply(1:nrow(comb), wrapper_for_getScore)
+  # comb <- comb %>% mutate(scanScore=scanScore)
+  # comb <- comb %>% filter(scanScore == max(scanScore, na.rm = TRUE))
+  comb <- comb %>% filter(qval == min(comb$qval))
+  # D_table2 <- rbind(D_table2, comb %>% select(-scanScore))
+  D_table2 <- rbind(D_table2, comb)
+}
+
+D_table <- D_table2
+rm(D_table2)
+
+### 重複しているentryを除く
+D_table <- D_table %>% distinct(id1, id2, .keep_all = TRUE)
+cat(paste("After scan surrounded area: ", D_table %>% nrow(), "\n"))
+rm(map)
+
 
 D_table <- dplyr::left_join(D_table, Location %>% rename(chr1=chr, start1=start, end1=end), by=c("id1"="id"))
 D_table <- dplyr::left_join(D_table, Location %>% rename(chr2=chr, start2=start, end2=end), by=c("id2"="id"))
