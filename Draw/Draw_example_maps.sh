@@ -32,12 +32,15 @@ Description
 
 	-c, --color [color list]
 		specify color for each samples. separated by space but surrounded with double quatation
+	
+	--circles [circle location file]
+		file for circle drawing
 EOF
 
 }
 
 SHORT=hvi:o:d:c:
-LONG=help,version,in:,out:,data:,color:
+LONG=help,version,in:,out:,data:,color:,circles:
 PARSED=`getopt --options $SHORT --longoptions $LONG --name "$0" -- "$@"`
 if [[ $? -ne 0 ]]; then
 	exit 2
@@ -70,6 +73,10 @@ while true; do
 			COLORS=($2)
 			shift 2
 			;;
+		--circles)
+			FILE_circles="$2"
+			shift 2
+			;;
 		--)
 			shift
 			break
@@ -90,6 +97,7 @@ TIME_STAMP=$(date +"%Y-%m-%d")
 [ ! -n "${COLORS}" ] && echo "Please specify colors" && exit 1
 [ $# -lt 1 ] && echo "Please specify target Hi-C sample name(s)" && exit 1
 [ ! -e "${FILE_location}" ] && echo "Location file is not exists" && exit 1
+FILE_circles=${FILE_circles:-"NULL"}
 
 SAMPLES=$@
 
@@ -143,7 +151,7 @@ do
 	do
 		COL=${COLORS[$i]}
 		let i=${i}+1
-		sbatch -n 4 --job-name=${id}_${NAME}_hic $(sq --node) -o "${DIR_OUT}/log/${TIME_STAMP}_map_for_${id}_${NAME}.log" --open-mode append --wrap="Rscript --vanilla --slave ${DIR_LIB}/Draw_matrix.R -i ${DIR_DATA}/${NAME}/${RESOLUTION}/ICE/${CHR}.rds --normalize NA --zero NA --na na --moving_average ${MOVING_AVERAGE} --chr ${CHR} --start ${START} --end ${END} --unit p --max 0.95 --color $COL --width 800 -o ${DIR_OUT}/img/${id}_${NAME}_hic1.png $DRAW_LINE_H $DRAW_LINE_V && convert -rotate -45 -crop 1134x300-167+100 -resize 800x ${DIR_OUT}/img/${id}_${NAME}_hic1.png ${DIR_OUT}/img/${id}_${NAME}_hic2.png"
+		sbatch -n 4 --job-name=${id}_${NAME}_hic $(sq --node) -o "${DIR_OUT}/log/${TIME_STAMP}_map_for_${id}_${NAME}.log" --open-mode append --wrap="Rscript --vanilla --slave ${DIR_LIB}/Draw_matrix.R -i ${DIR_DATA}/${NAME}/${RESOLUTION}/ICE/${CHR}.rds --normalize NA --zero NA --na na --moving_average ${MOVING_AVERAGE} --chr ${CHR} --start ${START} --end ${END} --unit p --max 0.95 --color $COL --width 800 -o ${DIR_OUT}/img/${id}_${NAME}_hic1.png --circle $FILE_circles $DRAW_LINE_H $DRAW_LINE_V && convert -rotate -45 -crop 1134x300-167+100 -resize 800x ${DIR_OUT}/img/${id}_${NAME}_hic1.png ${DIR_OUT}/img/${id}_${NAME}_hic2.png"
 
 		# sbatch -n 4 --job-name=${id}_${NAME}_tad $(sq --node) -o "${DIR_OUT}/log/${TIME_STAMP}_tad_for_${id}_${NAME}.log" --open-mode append --wrap="Rscript --vanilla --slave ${DIR_LIB}/Draw_borderStrength.R -i ${DIR_DATA}/${NAME}/${RESOLUTION}/ICE/${CHR}.rds --chr ${CHR} --start ${START} --end ${END} --width 800 --height 50 --out ${DIR_OUT}/img/${id}_${NAME}_tad.png"
 
