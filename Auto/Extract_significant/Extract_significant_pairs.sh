@@ -158,7 +158,7 @@ sbatch -n 1 --job-name=si2_${UNIQ_ID} $DEPEND -o "${FILE_log}" --open-mode appen
 cd ${DIR_tmp}/scores
 cat chr1.txt | head -n1 > $FILE_OUT
 ls chr*.txt | xargs -n1 | xargs -n1 -I@ sh -c "cat \@ | tail -n+2" | sort -k12,12g >> $FILE_OUT
-ls ${DIR_tmp}/log/define_significant_pairs_*.log | xargs -n1 | xargs -n1 -I@ sh -c "cat @ | cut -d':' -f2 | tr -d ' ' | xargs" | awk -v OFS='\t' 'BEGIN{Nsig=0; Nall=0}{Nsig+=\$3; Nall+=\$1}END{print "Total combinations: "Nall; print "Total significant: "Nsig;}'
+ls ${DIR_tmp}/log/define_significant_pairs_*.log | xargs -n1 | xargs -n1 -I@ sh -c "cat @ | cut -d':' -f2 | tr -d ' ' | xargs" | awk -v OFS='\t' 'BEGIN{Nsig=0; Nfirst=0; Nall=0}{Nsig+=\$3; Nfirst+=\$2; Nall+=\$1}END{print "Total combinations: "Nall; print "Total first filtered: "Nfirst; print "Total significant: "Nsig;}'
 [ "$FLAG_remove_tmp" = "TRUE" ] && rm -rf ${DIR_tmp}
 EOF
 
