@@ -384,6 +384,29 @@ if(FLAG_cairo){
 par(oma=c(0,0,0,0), mar=c(0,0,0,0))
 image(Transform(map.cat), col=colors, axes=F)
 
+
+if(as.character(opt["linev_chr"])!="NULL"){
+  for(M in unlist(strsplit(as.character(opt["linev_pos"]), ","))){
+    line <- as.numeric(gsub(" ", "", M, fixed = TRUE))
+    L1 <- which((LocMatrix[,1] == as.character(opt["linev_chr"])) & (as.numeric(LocMatrix[,2]) <= line) & (as.numeric(LocMatrix[,3]) >= line))
+    target <- (L1 - min(Region)) / (length(Region)-1)
+    abline(h=(1-target), col=adjustcolor("chartreuse4", alpha.f = 0.5), lty=3, lwd=5)
+  }
+}
+if(as.character(opt["lineh_chr"])!="NULL"){
+  for(M in unlist(strsplit(as.character(opt["lineh_pos"]), ","))){
+    line <- as.numeric(gsub(" ", "", M, fixed = TRUE))
+    L2 <- which((LocMatrix[,1] == as.character(opt["lineh_chr"])) & (as.numeric(LocMatrix[,2]) <= line) & (as.numeric(LocMatrix[,3]) >= line))
+    target <- (L2 - min(Region2)) / (length(Region2)-1)
+    abline(v=target, col=adjustcolor("sienna4", alpha.f = 0.5), lty=3, lwd=5)
+  }
+}
+if(CHR=="all"){
+  Location <- cumsum(LINE_for_chromosome_border[1:(length(LINE_for_chromosome_border)-1)])/nrow(map)
+  abline(v=Location, col="black", lty=1, lwd=2)
+  abline(h=1-Location, col="black", lty=1, lwd=2)
+}
+
 if(as.character(opt["circle"]) != "NULL"){
   DATA_circle <- read.table(as.character(opt["circle"]), header=F, sep="\t", check.names = F)
   nc <- colnames(map.extract)
@@ -396,29 +419,6 @@ if(as.character(opt["circle"]) != "NULL"){
          ylim=c(1,nrow(map.extract)), xaxs="i", yaxs="i", cex=2, axes=F, col='black', lwd=2.5)
   }
 }
-
-if(as.character(opt["linev_chr"])!="NULL"){
-  for(M in unlist(strsplit(as.character(opt["linev_pos"]), ","))){
-    line <- as.numeric(gsub(" ", "", M, fixed = TRUE))
-    L1 <- which((LocMatrix[,1] == as.character(opt["linev_chr"])) & (as.numeric(LocMatrix[,2]) <= line) & (as.numeric(LocMatrix[,3]) >= line))
-    target <- (L1 - min(Region)) / (length(Region)-1)
-    abline(h=(1-target), col="chartreuse4", lty=3, lwd=5)
-  }
-}
-if(as.character(opt["lineh_chr"])!="NULL"){
-  for(M in unlist(strsplit(as.character(opt["lineh_pos"]), ","))){
-    line <- as.numeric(gsub(" ", "", M, fixed = TRUE))
-    L2 <- which((LocMatrix[,1] == as.character(opt["lineh_chr"])) & (as.numeric(LocMatrix[,2]) <= line) & (as.numeric(LocMatrix[,3]) >= line))
-    target <- (L2 - min(Region2)) / (length(Region2)-1)
-    abline(v=target, col="sienna4", lty=3, lwd=5)
-  }
-}
-if(CHR=="all"){
-  Location <- cumsum(LINE_for_chromosome_border[1:(length(LINE_for_chromosome_border)-1)])/nrow(map)
-  abline(v=Location, col="black", lty=1, lwd=2)
-  abline(h=1-Location, col="black", lty=1, lwd=2)
-}
-
 
 dummy <- dev.off()
 
