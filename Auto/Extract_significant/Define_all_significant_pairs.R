@@ -46,91 +46,96 @@ map[!mask_intra] <- NA
 rm(mask_intra)
 
 
-SEARCH_AREA <- 5
+
 
 
 #=============================================
 # 周りのスコアを見てフィルタリング
 #=============================================
 mask <- data.frame(
-          V1 = c(1, 1, 1, 1, 1, 0, 2, 2, 2, 2, 2),
-          V2 = c(1, 1, 1, 1, 1, 0, 2, 2, 2, 2, 2),
-          V3 = c(1, 1, 1, 1, 1, 0, 2, 2, 2, 2, 2),
-          V4 = c(1, 1, 1, 0, 0, 0, 0, 0, 2, 2, 2),
-          V5 = c(1, 1, 1, 0, -1, -1, -1, 0, 2, 2, 2),
-          V6 = c(0, 0, 0, 0, -1, -2, -1, 0, 0, 0, 0),
-          V7 = c(1, 1, 1, 0, -1, -1, -1, 0, 1, 1, 1),
-          V8 = c(1, 1, 1, 0, 0, 0, 0, 0, 1, 1, 1),
-          V9 = c(1, 1, 1, 1, 1, 0, 1, 1, 1, 1, 1),
-         V10 = c(1, 1, 1, 1, 1, 0, 1, 1, 1, 1, 1),
-         V11 = c(1, 1, 1, 1, 1, 0, 1, 1, 1, 1, 1)
+          V1 = c(8, 8, 8, 10, 10, 10, 0, 0, 0, 0, 0, 0, 0, 0, 0),
+          V2 = c(8, 8, 8, 10, 10, 10, 0, 0, 0, 0, 0, 0, 0, 0, 0),
+          V3 = c(8, 8, 8, 10, 10, 10, 0, 0, 0, 0, 0, 0, 0, 0, 0),
+          V4 = c(6, 6, 6, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0),
+          V5 = c(6, 6, 6, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0),
+          V6 = c(6, 6, 6, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0),
+          V7 = c(4, 4, 4, 0, 0, 0, -1, -1, -1, 0, 0, 0, 0, 0, 0),
+          V8 = c(4, 4, 4, 0, 0, 0, -1, -2, -1, 0, 0, 0, 0, 0, 0),
+          V9 = c(4, 4, 4, 0, 0, 0, -1, -1, -1, 0, 0, 0, 0, 0, 0),
+         V10 = c(2, 2, 2, 0, 0, 0, 0, 0, 0, 0, 0, 0, 11, 11, 11),
+         V11 = c(2, 2, 2, 0, 0, 0, 0, 0, 0, 0, 0, 0, 11, 11, 11),
+         V12 = c(2, 2, 2, 0, 0, 0, 0, 0, 0, 0, 0, 0, 11, 11, 11),
+         V13 = c(1, 1, 1, 3, 3, 3, 5, 5, 5, 7, 7, 7, 9, 9, 9),
+         V14 = c(1, 1, 1, 3, 3, 3, 5, 5, 5, 7, 7, 7, 9, 9, 9),
+         V15 = c(1, 1, 1, 3, 3, 3, 5, 5, 5, 7, 7, 7, 9, 9, 9)
 )
+
+SEARCH_AREA <- 7
+
 mask <- as.matrix(mask)
 mask_all <- which(mask>-2, arr.ind = TRUE)
 mask_center <- which(mask<0, arr.ind = TRUE)
-mask_surround <- which(mask==1, arr.ind = TRUE)
-mask_leftBottom <- which(mask==2, arr.ind = TRUE)
+mask_surround <- list()
+for(bb in 1:9){
+  mask_surround[[as.character(bb)]] <- which(mask==bb, arr.ind = TRUE)
+}
 checkSurrounded <- function(i,j){
-  ### -6するのは中心をずらすため
-  index_all <- cbind(mask_all[,1]+i-6, mask_all[,2]+j-6)
-  index_center <- cbind(mask_center[,1]+i-6, mask_center[,2]+j-6)
-  index_surround <- cbind(mask_surround[,1]+i-6, mask_surround[,2]+j-6)
-  index_leftBottom <- cbind(mask_leftBottom[,1]+i-6, mask_leftBottom[,2]+j-6)
-  
-  sss_middle <- as.numeric(map[i,j])
+  ### 中心をずらす
+  index_all <- cbind(mask_all[,1]+i-SEARCH_AREA -1, mask_all[,2]+j-SEARCH_AREA-1)
+  index_center <- cbind(mask_center[,1]+i-SEARCH_AREA-1, mask_center[,2]+j-SEARCH_AREA-1)
+  sss_all <- as.numeric(map[index_all])
   sss_center <- as.numeric(map[index_center]) 
   
-  if(is.na(sss_middle)){
-    0
-  }else{
-    ### 90% 以上がスコアで埋まっている
-    sss <- as.numeric(map[index_all])
-    FLAG_fill <- (sum(!is.na(sss) & sss > 0) / length(sss)) > 0.90
-    
-    ### centerは少なくとも4つ以上
-    FLGA_center <- sum(!is.na(sss_center)) > 3
-
-    if(!(FLAG_fill && FLGA_center)){
-      0
-    }else{
-      ### 周りのスコアよりもスコアが高い
-      sss_surround <- as.numeric(map[index_surround])
-      FLAG_surround <- max(sss_surround, na.rm = TRUE) > mean(sss_center, na.rm = TRUE)
-      if(FLAG_surround){
-        0
-      }else{
-        ### Left bottom cornerの平均値よりも高い
-        sss_leftBottom <- as.numeric(map[index_leftBottom])
-        FLAG_leftBottom <- mean(sss_leftBottom, na.rm = TRUE) < sss_middle
-        if(FLAG_leftBottom){
-          1
-        }else{
-          0
-        }
-      }
+  ### 中心はNAでない
+  if(is.na(map[i,j])){
+    return(0)
+  }
+  
+  ### 90% 以上がスコアで埋まっている
+  if((sum(!is.na(sss_all)) / length(sss_all)) < 0.90){
+    return(0)
+  }
+  
+  ### centerは少なくとも3つ以上欠けていてはダメ
+  if(sum(is.na(sss_center)) > 3){
+    return(0)
+  }
+  
+  ### 周りの3x3のどのタイルよりも中心3x3のスコアの方が高い
+  sss_center_ave <- mean(sss_center, na.rm = TRUE)
+  for(bb in 1:9){
+    index_surrounded <- cbind(mask_surround[[as.character(bb)]][,1]+i-SEARCH_AREA-1, mask_surround[[as.character(bb)]][,2]+j-SEARCH_AREA-1)
+    if(mean(as.numeric(map[index_surrounded]), na.rm = TRUE) > sss_center_ave){
+      return(0)
     }
   }
+  return(1)
 }
 
 
 D_table <- c()
-MAX_NUM <- min(c(NUM_LINE-1, as.integer(T_max/Resolution)))
-MIN_NUM <- max(c(1, as.integer(T_min/Resolution)))
+MAX_NUM <- min(c(NUM_LINE-1-SEARCH_AREA, as.integer(T_max/Resolution)))
+MIN_NUM <- max(c(SEARCH_AREA + 1, as.integer(T_min/Resolution)))
 for(d in MIN_NUM:MAX_NUM){
   index1 <- (SEARCH_AREA + 1):(NUM_LINE - d - SEARCH_AREA)
   index2 <- index1 + d
   index3 <- cbind(index1, index2)
   
   wrapper <- function(k){
-    checkSurrounded(as.integer(index3[k,1]), as.integer(index3[k,2]))
+    checkSurrounded(index3[k,1], index3[k,2])
   }
   Okay <- sapply(1:nrow(index3), wrapper)
   
   scores <- as.numeric(map[index3])
-  Average <- mean(scores, na.rm=TRUE)
+  
+  ### top1%のデータだけbackgroundから取り除く
+  scores_back <- scores[!is.na(scores)]
+  scores_back <- scores_back[scores_back < quantile(scores_back, prob=0.99)]
+  
+  Average <- mean(scores_back)
   if(!is.na(Average) & Average != 0){
     distance <- d*Resolution
-    Pvalues <- pnorm(scores, mean=Average, sd=sd(scores, na.rm = TRUE), lower.tail = FALSE)
+    Pvalues <- pnorm(scores, mean=Average, sd=sd(scores_back), lower.tail = FALSE)
     df <- data.frame(id1=index1, id2=index2, distance=distance, score=scores, control=Average, 
                      fc=log2(scores/Average), pval=Pvalues, okay=Okay, stringsAsFactors = FALSE)
     df <- df %>% filter(!is.na(Pvalues))
@@ -150,37 +155,23 @@ cat(paste("Filtered number: ", D_table %>% nrow(), "\n"))
 #=============================================
 # 周りの領域をscanしてピークとなる領域を検出
 #=============================================
-# ### 中心から5x5の範囲のスコアを求める
-# getScore <- function(i,j){
-#   list_x <- max(c(1, i - 5)):min(c(i + 5, nrow(map)))
-#   list_y <- max(c(1, j - 5)):min(c(j+ 5, nrow(map)))
-#   comb <- expand.grid(list_x, list_y)
-#   index <- cbind(as.numeric(comb[,1]), as.numeric(comb[,2]))
-#   score <- mean(as.numeric(map[index]), na.rm = TRUE)
-#   score
-# }
-
 ### 最大のスコアを持つものに入れ替える
 D_table2 <- NULL
 for(k in 1:nrow(D_table)){
   cen_x <- D_table[k,"id1"]
   cen_y <- D_table[k,"id2"]
-  list_x <- max(c(1, cen_x - 10)):min(c(cen_x + 10, nrow(map)))
-  list_y <- max(c(1, cen_y - 10)):min(c(cen_y + 10, nrow(map)))
+  list_x <- max(c(1, cen_x - 5)):min(c(cen_x + 5, nrow(map)))
+  list_y <- max(c(1, cen_y - 5)):min(c(cen_y + 5, nrow(map)))
   comb <- expand.grid(list_x, list_y)
   comb <- data.frame(id1=as.integer(comb[,1]), id2=as.integer(comb[,2]), stringsAsFactors = FALSE)
   comb <- dplyr::left_join(comb, D_table, by=c("id1", "id2"))
   comb <- comb %>% filter(!is.na(qval))
-  # wrapper_for_getScore <- function(m){
-  #   # getScore(comb[m,"id1"], comb[m,"id2"])
-  #   map[comb[m,"id1"], comb[m,"id2"]]
-  # }
-  # scanScore <- sapply(1:nrow(comb), wrapper_for_getScore)
-  # comb <- comb %>% mutate(scanScore=scanScore)
-  # comb <- comb %>% filter(scanScore == max(scanScore, na.rm = TRUE))
-  comb <- comb %>% filter(qval == min(comb$qval))
-  # D_table2 <- rbind(D_table2, comb %>% select(-scanScore))
-  D_table2 <- rbind(D_table2, comb)
+  
+  ### 少なくとも周りに１つ以上他のsignificantなピークがあるものだけ選ぶ
+  if(nrow(comb) > 1){
+    comb <- comb %>% filter(qval == min(comb$qval))
+    D_table2 <- rbind(D_table2, comb)
+  }
 }
 
 D_table <- D_table2
