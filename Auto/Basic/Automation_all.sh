@@ -170,30 +170,30 @@ esac
 [ "$FLAG_fastqc" = "TRUE" ] && [ ! -e "${DIR_DATA}/fastqc" ] && mkdir "${DIR_DATA}/fastqc"
 
 
-# #-----------------------------------------------
-# # Alignment
-# #-----------------------------------------------
-# sbatch -n 12 --job-name=aln_${NAME} -o "${DIR_LOG}/${TIME_STAMP}_Alignment_${NAME}_1.log" --export=NAME="${NAME}_1",DIR_LIB="${DIR_LIB}",DIR_DATA="${DIR_DATA}",BOWTIE_TARGET="${BOWTIE_TARGET}",BOWTIE2_INDEXES="${BOWTIE2_INDEXES}" --open-mode append ${DIR_LIB}/Alignment_with_trimming.sh
-# sbatch -n 12 --job-name=aln_${NAME} -o "${DIR_LOG}/${TIME_STAMP}_Alignment_${NAME}_2.log" --export=NAME="${NAME}_2",DIR_LIB="${DIR_LIB}",DIR_DATA="${DIR_DATA}",BOWTIE_TARGET="${BOWTIE_TARGET}",BOWTIE2_INDEXES="${BOWTIE2_INDEXES}" --open-mode append ${DIR_LIB}/Alignment_with_trimming.sh
+#-----------------------------------------------
+# Alignment
+#-----------------------------------------------
+sbatch -n 12 --job-name=aln_${NAME} -o "${DIR_LOG}/${TIME_STAMP}_Alignment_${NAME}_1.log" --export=NAME="${NAME}_1",DIR_LIB="${DIR_LIB}",DIR_DATA="${DIR_DATA}",BOWTIE_TARGET="${BOWTIE_TARGET}",BOWTIE2_INDEXES="${BOWTIE2_INDEXES}" --open-mode append ${DIR_LIB}/Alignment_with_trimming.sh
+sbatch -n 12 --job-name=aln_${NAME} -o "${DIR_LOG}/${TIME_STAMP}_Alignment_${NAME}_2.log" --export=NAME="${NAME}_2",DIR_LIB="${DIR_LIB}",DIR_DATA="${DIR_DATA}",BOWTIE_TARGET="${BOWTIE_TARGET}",BOWTIE2_INDEXES="${BOWTIE2_INDEXES}" --open-mode append ${DIR_LIB}/Alignment_with_trimming.sh
 
 
-# #-----------------------------------------------
-# # fastqc
-# #-----------------------------------------------
-# [ "$FLAG_fastqc" = "TRUE" ] &&  [ ! -e ${DIR_DATA}/fastqc/${NAME}_fastqc ] && sbatch -n 12 --job-name=fastqc_${NAME}_1 -o "${DIR_LOG}/${TIME_STAMP}_fastqc_${NAME}_1.log" --open-mode append --wrap="cd ${DIR_DATA}; /applications/fastqc/current/fastqc -o fastqc/ --nogroup -t 12 ${NAME}_1.fastq" && sbatch -n 12 --job-name=fastqc_${NAME}_2 -o "${DIR_LOG}/${TIME_STAMP}_fastqc_${NAME}_2.log" --open-mode append --wrap="cd ${DIR_DATA}; /applications/fastqc/current/fastqc -o fastqc/ --nogroup -t 12 ${NAME}_2.fastq"
+#-----------------------------------------------
+# fastqc
+#-----------------------------------------------
+[ "$FLAG_fastqc" = "TRUE" ] &&  [ ! -e ${DIR_DATA}/fastqc/${NAME}_fastqc ] && sbatch -n 12 --job-name=fastqc_${NAME}_1 -o "${DIR_LOG}/${TIME_STAMP}_fastqc_${NAME}_1.log" --open-mode append --wrap="cd ${DIR_DATA}; /applications/fastqc/current/fastqc -o fastqc/ --nogroup -t 12 ${NAME}_1.fastq" && sbatch -n 12 --job-name=fastqc_${NAME}_2 -o "${DIR_LOG}/${TIME_STAMP}_fastqc_${NAME}_2.log" --open-mode append --wrap="cd ${DIR_DATA}; /applications/fastqc/current/fastqc -o fastqc/ --nogroup -t 12 ${NAME}_2.fastq"
 
 
 
-# ### assign to nearest restriction enzyme site
-# # output: <NAME>.map
-# # +の向きの場合、そのまま、-の向きの場合、aglinした部位からreadの長さ分だけ足した値に修正する
-# # RepeatとUniqueは、XS:iがあるか無いかで判断
-# # 最も近い制限酵素部位を出力する
-# # +の向きの場合、制限酵素からの位置に関わらずL,-の向きの場合,Rと出力する
-# JOB_ID=($(squeue -o "%j %F" -u htanizawa | grep -e "aln_${NAME}" | cut -f2 -d' ' | xargs))
-# JOB_ID_string=$(IFS=:; echo "${JOB_ID[*]}")
-# DEPEND=""; [ -n "$JOB_ID_string" ] && DEPEND="--dependency=afterok:${JOB_ID_string}"
-# sbatch -n 1 --job-name=map_${NAME} $DEPEND -o "${DIR_LOG}/${TIME_STAMP}_make_map_${NAME}.log" --open-mode append --wrap="cd ${DIR_DATA}; perl ${DIR_LIB}/Assign_nearest_enzymeSites.pl -a ${NAME}_1.sam -b ${NAME}_2.sam -o ${NAME}.map -e ${FILE_enzyme_def} -d ${FILE_enzyme_index}"
+### assign to nearest restriction enzyme site
+# output: <NAME>.map
+# +の向きの場合、そのまま、-の向きの場合、aglinした部位からreadの長さ分だけ足した値に修正する
+# RepeatとUniqueは、XS:iがあるか無いかで判断
+# 最も近い制限酵素部位を出力する
+# +の向きの場合、制限酵素からの位置に関わらずL,-の向きの場合,Rと出力する
+JOB_ID=($(squeue -o "%j %F" -u htanizawa | grep -e "aln_${NAME}" | cut -f2 -d' ' | xargs))
+JOB_ID_string=$(IFS=:; echo "${JOB_ID[*]}")
+DEPEND=""; [ -n "$JOB_ID_string" ] && DEPEND="--dependency=afterok:${JOB_ID_string}"
+sbatch -n 1 --job-name=map_${NAME} $DEPEND -o "${DIR_LOG}/${TIME_STAMP}_make_map_${NAME}.log" --open-mode append --wrap="cd ${DIR_DATA}; perl ${DIR_LIB}/Assign_nearest_enzymeSites.pl -a ${NAME}_1.sam -b ${NAME}_2.sam -o ${NAME}.map -e ${FILE_enzyme_def} -d ${FILE_enzyme_index}"
 
 
 
