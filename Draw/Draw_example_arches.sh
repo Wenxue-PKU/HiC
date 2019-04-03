@@ -123,5 +123,5 @@ do
 	END=$(sqlite3 ${DB_loc} "select end from loc where id='${id}'")
 
 	# xvfb-run Rscript --vanilla --slave ${DIR_LIB}/Draw_arch.R -i ${FILE_arch} --start $START --end $END --min ${MIN} --color ${COLOR} -o ${DIR_OUT}/img/${id}_${NAME}_arch.png
-	sbatch -n 4 --job-name=${id}_${NAME}_arch $(sq --node) -o "${DIR_OUT}/log/${TIME_STAMP}_arch_graph_for_${id}_${NAME}.log" --open-mode append --wrap="Rscript --vanilla --slave ${DIR_LIB}/Draw_arch.R -i ${FILE_arch} --chr ${CHR} --start $START --end $END --min ${MIN} --color ${COLOR} --score ${TARGET_COLUMN} -o ${DIR_OUT}/img/${id}_${NAME}_arch.png"
+	[ ! -e ${DIR_OUT}/img/${id}_${NAME}_arch.png ] && sbatch -n 4 --job-name=${id}_${NAME}_arch $(sq --node) -o "${DIR_OUT}/log/${TIME_STAMP}_arch_graph_for_${id}_${NAME}.log" --open-mode append --wrap="Rscript --vanilla --slave ${DIR_LIB}/Draw_arch.R -i ${FILE_arch} --chr ${CHR} --start $START --end $END --min ${MIN} --color ${COLOR} --score ${TARGET_COLUMN} -o ${DIR_OUT}/img/${id}_${NAME}_arch.png"
 done
