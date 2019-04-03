@@ -7,7 +7,8 @@ option_list <- list(
   make_option(c("-i", "--in"), default="NA", help="peak file"),
   make_option(c("-o", "--out"), default="NA", help="output file"),
   make_option(c("-p", "--promoter"), default="NA", help="active promoter file"),
-  make_option(c("-e", "--enhancer"), default="NA", help="enhancer file")
+  make_option(c("-e", "--enhancer"), default="NA", help="enhancer file"),
+  make_option(c("--onlyEP"), default="FALSE", help="output only EP(TRUE) or all(FALSE)")
 )
 opt <- parse_args(OptionParser(option_list=option_list))
 
@@ -16,6 +17,7 @@ FILE_sig <- as.character(opt["in"])
 FILE_out <- as.character(opt["out"])
 FILE_promoter <- as.character(opt["promoter"])
 FILE_enhancer <- as.character(opt["enhancer"])
+FLAG_onlyEP <- as.character(opt["onlyEP"])
 
 suppressWarnings(suppressMessages(library(GenomicRanges)))
 suppressWarnings(suppressMessages(library(dplyr)))
@@ -76,6 +78,11 @@ comb_order <- comb_order[-which(comb_order=="E-P")]
 comb_order <- c(comb_order, "E-P")
 
 D_out <- data.frame(D_sig, comb=factor(D_table$comb, levels = comb_order)) %>% arrange(comb)
+D_out %>% group_by(comb) %>% summarise(n=n())
+
+if(FLAG_onlyEP == "TRUE"){
+  D_out <- D_out %>% filter(comb=="E-P")
+}
 write.table(D_out, FILE_out, sep = "\t", row.names = FALSE, col.names = TRUE, quote = FALSE)
 
 
