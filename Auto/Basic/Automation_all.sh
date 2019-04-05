@@ -243,7 +243,7 @@ sbatch -N 1 -n 1 --exclusive=user --job-name=db_${NAME} $DEPEND -o "${DIR_LOG}/$
 #-----------------------------------------------
 # HiC mapの解像度
 #-----------------------------------------------
-sbatch -n 1 --job-name=resolution_${NAME} $DEPEND -o "${DIR_LOG}/${TIME_STAMP}_HiCmap_resolution_${NAME}.log" --open-mode append --wrap="bash ${DIR_LIB}/../../Statistics/HiCmap_resolution.sh -L $CHROM_LENGTH --count ${DIR_DATA}/${NAME}_count_for_resolution.txt"
+sbatch -n 1 --job-name=resolution_${NAME} $DEPEND -o "${DIR_LOG}/${TIME_STAMP}_HiCmap_resolution_${NAME}.log" --open-mode append --wrap="bash ${DIR_LIB}/../../Statistics/HiCmap_resolution.sh -L $CHROM_LENGTH --count ${DIR_DATA}/${NAME}_count_for_resolution.txt ${DIR_DATA}/${NAME}_sort.map"
 
 #-----------------------------------------------
 # read数を調べる
