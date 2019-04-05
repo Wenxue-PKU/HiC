@@ -5,9 +5,13 @@ option_list <- list(
   make_option(c("-i", "--in"),help="fragment.txt"),
   make_option(c("-o", "--out"),help="bad fragment list"),
   make_option(c("-n", "--name"),help="sample name"),
-  make_option(c("-g", "--png"),help="graph of read distribution")
+  make_option(c("-g", "--png"),help="graph of read distribution"),
+  make_option(c("--cairo"), default="TRUE", help="use cairo for output")
 )
 opt <- parse_args(OptionParser(option_list=option_list))
+
+
+FLAG_cairo <- eval(parse(text=as.character(opt["cairo"])))
 
 lseq <- function(from=1, to=100000, length.out=6) {
   exp(seq(log(from), log(to), length.out = length.out))
@@ -26,7 +30,14 @@ index_fit <- which(x > NUM & x < 1e5)
 data_for_fit <- data.frame(x=log(x[index_fit]), y=y[index_fit])
 fit <- lm(y ~ x, data=data_for_fit)
 
-png(as.character(opt["png"]), width=20, height=20,  units="cm", res = 72, bg="white")
+
+if(FLAG_cairo){
+  suppressWarnings(suppressMessages(library(Cairo)))
+  CairoPNG(as.character(opt["png"]), width=20, height=20,  units="cm", res = 72, bg="white")
+}else{
+  png(as.character(opt["png"]), width=20, height=20,  units="cm", res = 72, bg="white")
+}
+
 par(oma=c(0,0,0,0), mar=c(4,5,3,2))
 plot(x, y, pch=20, cex=1, xlab="Ranking", ylab="Total read count", log='x', 
      cex.axis=1.8, cex.lab=2, main=as.character(opt["name"]), cex.main=1.8, xaxt="n")
