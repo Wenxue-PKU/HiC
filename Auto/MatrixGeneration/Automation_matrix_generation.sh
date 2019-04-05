@@ -131,7 +131,7 @@ if [ $FLAG_RAW = "TRUE" ]; then
 	JOB_ID=($(squeue -o "%j %F" -u htanizawa | grep -e "badFragment_${NAME}" | cut -f2 -d' ' | xargs))
 	JOB_ID_string=$(IFS=:; echo "${JOB_ID[*]}")
 	DEPEND=""; [ -n "$JOB_ID_string" ] && DEPEND="--dependency=afterok:${JOB_ID_string}"
-	if [ "$FLAG_blacklist" = "TRUE" && -e ${DIR_DATA}/${NAME}_bad_fragment.txt ]; then
+	if [ "$FLAG_blacklist" = "TRUE" ] && [ -e ${DIR_DATA}/${NAME}_bad_fragment.txt ]; then
 		sbatch -N 1 -n 5 --exclusive=user --job-name=RAW_${NAME}_${RESOLUTION_string} $DEPEND -o ${FILE_LOG} --open-mode append --wrap="cd ${DIR_DATA}; perl $PRO_RAW_matrix -i ${NAME}_fragment.db -o ${NAME}/${RESOLUTION_string}/Raw/  -r ${RESOLUTION} -b ${NAME}_bad_fragment.txt"
 	else
 		sbatch -N 1 -n 5 --exclusive=user --job-name=RAW_${NAME}_${RESOLUTION_string} $DEPEND -o ${FILE_LOG} --open-mode append --wrap="cd ${DIR_DATA}; perl $PRO_RAW_matrix -i ${NAME}_fragment.db -o ${NAME}/${RESOLUTION_string}/Raw/  -r ${RESOLUTION}"
