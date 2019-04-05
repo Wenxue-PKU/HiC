@@ -110,6 +110,9 @@ fi
 if [ ! -e ${DIR_DATA}/${NAME}/${RESOLUTION_string}/ICE ]; then
 	mkdir ${DIR_DATA}/${NAME}/${RESOLUTION_string}/ICE
 fi
+if [ ! -e ${DIR_DATA}/${NAME}/${RESOLUTION_string}/ICE2 ]; then
+	mkdir ${DIR_DATA}/${NAME}/${RESOLUTION_string}/ICE2
+fi
 if [ ! -e ${DIR_DATA}/${NAME}/${RESOLUTION_string}/InterBin ]; then
 	mkdir ${DIR_DATA}/${NAME}/${RESOLUTION_string}/InterBin
 fi
@@ -163,19 +166,19 @@ fi
 
 
 
-#==============================================================
-# すべてのraw readの合計値を計算する(intra+inter)
-#==============================================================
-if [ ! -e ${DIR_DATA}/${NAME}/TotalRead.txt ]; then
-	ALREDY_WORKING=$(squeue -o "%j %F" -u htanizawa | grep -e "TotalRaw_${NAME}"  | cut -f2 -d' ' | xargs)
+# #==============================================================
+# # すべてのraw readの合計値を計算する(intra+inter)
+# #==============================================================
+# if [ ! -e ${DIR_DATA}/${NAME}/TotalRead.txt ]; then
+# 	ALREDY_WORKING=$(squeue -o "%j %F" -u htanizawa | grep -e "TotalRaw_${NAME}"  | cut -f2 -d' ' | xargs)
 
-	if [ -n "$ALREDY_WORKING" ]; then
-		JOB_ID=($(squeue -o "%j %F" -u htanizawa | grep -e "InterBin_${NAME}_${RESOLUTION_string}" -e "RAW_${NAME}_${RESOLUTION_string}" | cut -f2 -d' ' | xargs))
-		JOB_ID_string=$(IFS=:; echo "${JOB_ID[*]}")
-		DEPEND=""; [ -n "$JOB_ID_string" ] && DEPEND="--dependency=afterok:${JOB_ID_string}"
-		sbatch -n 1 --job-name=TotalRaw_${NAME} $DEPEND -o  ${FILE_LOG} --export=DIR_DATA=${DIR_DATA},NAME=${NAME},DIR_LIB=${DIR_LIB},RESOLUTION=${RESOLUTION_string},ORGANISM=${ORGANISM} --open-mode append ${DIR_LIB}/Count_total_Raw_read.sh
-	fi
-fi
+# 	if [ -n "$ALREDY_WORKING" ]; then
+# 		JOB_ID=($(squeue -o "%j %F" -u htanizawa | grep -e "InterBin_${NAME}_${RESOLUTION_string}" -e "RAW_${NAME}_${RESOLUTION_string}" | cut -f2 -d' ' | xargs))
+# 		JOB_ID_string=$(IFS=:; echo "${JOB_ID[*]}")
+# 		DEPEND=""; [ -n "$JOB_ID_string" ] && DEPEND="--dependency=afterok:${JOB_ID_string}"
+# 		sbatch -n 1 --job-name=TotalRaw_${NAME} $DEPEND -o  ${FILE_LOG} --export=DIR_DATA=${DIR_DATA},NAME=${NAME},DIR_LIB=${DIR_LIB},RESOLUTION=${RESOLUTION_string},ORGANISM=${ORGANISM} --open-mode append ${DIR_LIB}/Count_total_Raw_read.sh
+# 	fi
+# fi
 
 
 
@@ -192,9 +195,13 @@ if [ $FLAG_NORM = "TRUE" ]; then
 			let index=i-1
 			CHR=${CHRs[index]}
 			[ ! -e ${DIR_DATA}/${NAME}/${RESOLUTION_string}/ICE/${CHR}.rds ] && sbatch -N 1 -n 5 --exclusive=user --job-name=ICE_${NAME}_${RESOLUTION_string}_${CHR} $DEPEND -o ${FILE_LOG} --open-mode append --wrap="cd ${DIR_DATA}/${NAME}/${RESOLUTION_string}; Rscript --vanilla --slave ${DIR_LIB}/Bias_normalization.R -i Raw/${CHR}.matrix -o ICE/${CHR}.matrix --inter InterBin/${CHR}.txt --times 30 && Rscript --slave --vanilla ${DIR_LIB}/../../Conv/Convert_matrix_to_object.R -i ICE/${CHR}.matrix"
+
+			[ ! -e ${DIR_DATA}/${NAME}/${RESOLUTION_string}/ICE2/${CHR}.rds ] && sbatch -N 1 -n 5 --exclusive=user --job-name=ICE2_${NAME}_${RESOLUTION_string}_${CHR} $DEPEND -o ${FILE_LOG} --open-mode append --wrap="cd ${DIR_DATA}/${NAME}/${RESOLUTION_string}; Rscript --vanilla --slave ${DIR_LIB}/Bias_normalization_ICE2.R -i Raw/${CHR}.matrix -o ICE2/${CHR}.matrix --inter InterBin/${CHR}.txt --times 30 && Rscript --slave --vanilla ${DIR_LIB}/../../Conv/Convert_matrix_to_object.R -i ICE2/${CHR}.matrix"
 		done
 	else
 		sbatch -N 1 -n 5 --exclusive --job-name=ICE_${NAME}_${RESOLUTION_string} $DEPEND -o ${FILE_LOG} --open-mode append --wrap="cd ${DIR_DATA}/${NAME}/${RESOLUTION_string}; Rscript --vanilla --slave ${DIR_LIB}/Bias_normalization.R -i Raw/ALL.matrix -o ICE/ALL.matrix --times 30 && Rscript --slave --vanilla ${DIR_LIB}/../../Conv/Convert_matrix_to_object.R -i ICE/ALL.matrix"
+
+		sbatch -N 1 -n 5 --exclusive --job-name=ICE2_${NAME}_${RESOLUTION_string} $DEPEND -o ${FILE_LOG} --open-mode append --wrap="cd ${DIR_DATA}/${NAME}/${RESOLUTION_string}; Rscript --vanilla --slave ${DIR_LIB}/Bias_normalization_ICE2.R -i Raw/ALL.matrix -o ICE2/ALL.matrix --times 30 && Rscript --slave --vanilla ${DIR_LIB}/../../Conv/Convert_matrix_to_object.R -i ICE2/ALL.matrix"
 	fi
 fi
 
