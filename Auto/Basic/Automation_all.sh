@@ -111,15 +111,13 @@ MAPQ_THRESHOLD=${MAPQ_THRESHOLD:-10}
 FLAG_fastqc=${FLAG_fastqc:-TRUE}
 
 case $ORGANISM in
-	pombe)	BOWTIE_TARGET=ASM294v2.19
-			BOWTIE2_INDEXES=/wistar/noma/Data/S.Pombe_seq/pombase_ASM294v1.18
+	pombe)	BOWTIE_TARGET=pombe
+			BOWTIE2_INDEXES=/wistar/bioinfo-nfs/hideki_projects/Genome/data/pombe/2018
 			CHROM_LENGTH=12571820
-			FILE_CHROME_LENGTH=/wistar/noma/Data/S.Pombe_seq/pombase_ASM294v1.18/LENGTH.txt
+			FILE_CHROME_LENGTH=/wistar/bioinfo-nfs/hideki_projects/Genome/data/pombe/2018/LENGTH.txt
 			case $RESTRICTION in 
-				HindIII)	FILE_enzyme_index=/wistar/noma/Data/S.Pombe_seq/pombase_ASM294v1.18/Sectioning_HindIII.txt
-							FILE_enzyme_def=/wistar/noma/Data/S.Pombe_seq/pombase_ASM294v1.18/HindIII_sites.txt ;;
-				MboI)	FILE_enzyme_index=/wistar/noma/Data/S.Pombe_seq/pombase_ASM294v1.18/Sectioning_MboI.txt
-						FILE_enzyme_def=/wistar/noma/Data/S.Pombe_seq/pombase_ASM294v1.18/MboI_sites.txt ;;
+				MboI)	FILE_enzyme_index=/wistar/bioinfo-nfs/hideki_projects/Genome/data/pombe/2018/Sectioning_MboI.txt
+						FILE_enzyme_def=/wistar/bioinfo-nfs/hideki_projects/Genome/data/pombe/2018/MboI_sites.txt ;;
 				*)	echo "$RESTRICTION is not registered for $ORGANISM"
 					exit ;;
 			esac
@@ -244,8 +242,8 @@ sbatch -N 1 -n 1 --exclusive=user --job-name=db_${NAME} $DEPEND -o "${DIR_LOG}/$
 
 #-----------------------------------------------
 # HiC mapの解像度
-#-----------------------------------------------#==============================================================
-sbatch -n 1 --job-name=resolution_${NAME} $DEPEND  -o "${DIR_LOG}/${TIME_STAMP}_HiCmap_resolution_${NAME}.log" --open-mode append ${DIR_LIB}/../../Statistics/HiCmap_resolution.sh -L $CHROM_LENGTH --count ${DIR_DATA}/${NAME}_count_for_resolution.txt
+#-----------------------------------------------
+sbatch -n 1 --job-name=resolution_${NAME} $DEPEND -o "${DIR_LOG}/${TIME_STAMP}_HiCmap_resolution_${NAME}.log" --open-mode append --wrap="bash ${DIR_LIB}/../../Statistics/HiCmap_resolution.sh -L $CHROM_LENGTH --count ${DIR_DATA}/${NAME}_count_for_resolution.txt"
 
 #-----------------------------------------------
 # read数を調べる
