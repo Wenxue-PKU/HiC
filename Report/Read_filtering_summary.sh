@@ -79,18 +79,21 @@ for NAME in "$@"
 do
 	FILE_map=$(ls -t *make_map_${NAME}.log | head -n1)
 	FILE_count=$(ls -t *count_${NAME}.log | head -n1)
+	FILE_resolution=$(ls -t *HiCmap_resolution_${NAME}.log | head -n1)
 
 	if [ $FLAG -eq 0 ]
 	then
 		echo "SAMPLE name" > $FILE_OUT
 		tail -n 4 $FILE_map | cut -f1 -d: >> $FILE_OUT
 		cut -f1 -d: ${FILE_count} >> $FILE_OUT
+		echo "Estimated resolution" >> $FILE_OUT
 		FLAG=1
 	fi
 	
 	echo $NAME > $tmpfile
 	tail -n 4 $FILE_map | cut -f2 >> $tmpfile
 	cut -f2 -d: ${FILE_count} | sed 's/^ //' >> $tmpfile
+	tail -n 1 $FILE_resolution | cut -d' ' -f 5 >> $tmpfile
 	paste $FILE_OUT $tmpfile > $tmpfile2
 	mv $tmpfile2 $FILE_OUT
 done
