@@ -29,7 +29,6 @@ my $FILE_LENGTH = $opt{l};
 #---------------------------------------
 my %LEN;
 my $fh_length = IO::File->new($FILE_LENGTH) or die "cannot open $FILE_LENGTH: $!";
-$fh_length->getline();
 while($_ = $fh_length->getline()){
 	s/\r?\n//;
 	my ($chr, $len) = split /\t/;
