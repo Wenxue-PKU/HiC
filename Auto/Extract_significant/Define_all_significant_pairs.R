@@ -9,11 +9,21 @@ option_list <- list(
   make_option(c("--min"), default="20000", help="minimum distance to check(default : 20kb)"),
   make_option(c("--max"), default="2000000", help="maximum distance to check (default : 2Mb)"),
   make_option(c("--control"), default=1, help="minimum required average read for control region"),
-  make_option(c("--FDR"), default=0.01, help="threshold of FDR")
+  make_option(c("--FDR"), default=0.01, help="threshold of FDR"),
+  make_option(c("--surround_check"), default="TRUE", help="use surround area check (default: TRUE)")
 )
 opt <- parse_args(OptionParser(option_list=option_list))
 
 suppressWarnings(suppressMessages(library(dplyr)))
+
+
+#=============================================
+# test data
+#=============================================
+FILE_matrix <- "X:/hideki_projects/416_20181226_HiC_tempera_EBV/data/EBV_LCL_olap_b2/5kb_1kbslide/ICE2/EBV.rds"
+T_max <- 2000000
+T_min <- 5000
+
 
 FILE_out <- as.character(opt["out"])
 FILE_matrix <- as.character(opt["in"])
@@ -35,6 +45,8 @@ LocMatrix <- matrix(unlist(LocList), ncol=3, byrow=TRUE)
 NUM_LINE <- nrow(map)
 Location <- data.frame(id=1:NUM_LINE, chr=LocMatrix[,1], start=as.numeric(LocMatrix[,2]), end=as.numeric(LocMatrix[,3]), stringsAsFactors = FALSE)
 Resolution <- Location[1,"end"] - Location[1,"start"] + 1
+Sliding_window <- Location[2,"start"] - Location[1,"start"]
+T_max <- min(c(T_max,  max(Location[,"end"])- Location[1,"start"]))
 rm(LocList, LocMatrix)
 
 # remove inter-chromosome
@@ -70,7 +82,7 @@ mask <- data.frame(
          V15 = c(1, 1, 1, 3, 3, 3, 5, 5, 5, 7, 7, 7, 9, 9, 9)
 )
 
-SEARCH_AREA <- 7
+SEARCH_AREA <- 8
 
 mask <- as.matrix(mask)
 mask_all <- which(mask>-2, arr.ind = TRUE)
@@ -81,8 +93,8 @@ for(bb in 1:9){
 }
 checkSurrounded <- function(i,j){
   ### 中心をずらす
-  index_all <- cbind(mask_all[,1]+i-SEARCH_AREA -1, mask_all[,2]+j-SEARCH_AREA-1)
-  index_center <- cbind(mask_center[,1]+i-SEARCH_AREA-1, mask_center[,2]+j-SEARCH_AREA-1)
+  index_all <- cbind(mask_all[,1]+i-SEARCH_AREA, mask_all[,2]+j-SEARCH_AREA)
+  index_center <- cbind(mask_center[,1]+i-SEARCH_AREA, mask_center[,2]+j-SEARCH_AREA)
   sss_all <- as.numeric(map[index_all])
   sss_center <- as.numeric(map[index_center]) 
   
@@ -104,7 +116,7 @@ checkSurrounded <- function(i,j){
   ### 周りの3x3のどのタイルよりも中心3x3のスコアの方が高い
   sss_center_ave <- mean(sss_center, na.rm = TRUE)
   for(bb in 1:9){
-    index_surrounded <- cbind(mask_surround[[as.character(bb)]][,1]+i-SEARCH_AREA-1, mask_surround[[as.character(bb)]][,2]+j-SEARCH_AREA-1)
+    index_surrounded <- cbind(mask_surround[[as.character(bb)]][,1]+i-SEARCH_AREA, mask_surround[[as.character(bb)]][,2]+j-SEARCH_AREA)
     if(mean(as.numeric(map[index_surrounded]), na.rm = TRUE) > sss_center_ave){
       return(0)
     }
@@ -114,9 +126,12 @@ checkSurrounded <- function(i,j){
 
 
 D_table <- c()
-MAX_NUM <- min(c(NUM_LINE-1-SEARCH_AREA, as.integer(T_max/Resolution)))
-MIN_NUM <- max(c(SEARCH_AREA + 1, as.integer(T_min/Resolution)))
+MAX_NUM <- min(c(NUM_LINE-SEARCH_AREA-1, max(which(Location$end < T_max))-SEARCH_AREA))
+MIN_NUM <- max(c(SEARCH_AREA + 1, min(which(Location$start > T_min))))
 for(d in MIN_NUM:MAX_NUM){
+  if((NUM_LINE - d - SEARCH_AREA) < (SEARCH_AREA + 1)){
+    next
+  }
   index1 <- (SEARCH_AREA + 1):(NUM_LINE - d - SEARCH_AREA)
   index2 <- index1 + d
   index3 <- cbind(index1, index2)
@@ -134,7 +149,7 @@ for(d in MIN_NUM:MAX_NUM){
   
   Average <- mean(scores_back)
   if(!is.na(Average) & Average != 0){
-    distance <- d*Resolution
+    distance <- d*Sliding_window
     Pvalues <- pnorm(scores, mean=Average, sd=sd(scores_back), lower.tail = FALSE)
     df <- data.frame(id1=index1, id2=index2, distance=distance, score=scores, control=Average, 
                      fc=log2(scores/Average), pval=Pvalues, okay=Okay, stringsAsFactors = FALSE)
@@ -146,10 +161,18 @@ rm(df, index1, index2, index3, Okay, scores, Pvalues)
 
 cat(paste("Total target: ", D_table %>% nrow(), "\n"))
 D_table <- D_table %>% mutate(qval=p.adjust(pval, method = "BH")) %>% filter(qval < FDR)
+cat(paste("FDR < ", FDR, ": ", D_table %>% nrow(), "\n"))
+
+D_table <- D_table %>% filter(control >= T_control)
+cat(paste("Control > ", T_control, ": ", D_table %>% nrow(), "\n"))
 
 ### 周りのmatrixによるスコアと、control >= 1でもfiltering
-D_table <- D_table %>% filter(okay == 1 & control >= T_control) %>% select(-okay)
-cat(paste("Filtered number: ", D_table %>% nrow(), "\n"))
+if(as.character(opt["surround_check"]) == "TRUE"){
+  D_table <- D_table %>% filter(okay == 1)
+  cat(paste("Surround area check: ", D_table %>% nrow(), "\n"))
+}
+D_table <- D_table %>% select(-okay)
+cat(paste("After 1st filterings: ", D_table %>% nrow(), "\n"))
 
 
 #=============================================
