@@ -7,74 +7,63 @@ option_list <- list(
   make_option(c("-r", "--resolution"), default="NA", help="resolution (bp)"),
   make_option(c("-s", "--sliding"), default="NA", help="sliding window (bp)"),
   make_option(c("-o", "--out"), default="NA", help="matrices name xxx.matrix"),
-  make_option(c("-c", "--chr"), default="NA", help="target chromosome")
+  make_option(c("-c", "--chr"), default="NA", help="target chromosome"),
+  make_option(c("--start"), default="NA", help="start area"),
+  make_option(c("--end"), default="NA", help="end area")
 )
 opt <- parse_args(OptionParser(option_list=option_list))
 
-
-suppressWarnings(suppressMessages(library(RSQLite)))
+options(scipen=10)
 suppressWarnings(suppressMessages(library(dplyr)))
-options(useFancyQuotes = FALSE)
-
-#=============================================
-# test data
-#=============================================
-# DB_frag <- "X:/hideki_projects/416_20181226_HiC_tempera_EBV/data/EBV_LCL_olap_fragment.db"
-# SLIDING <- 1000
-# RESOLUTION <- 5000
-# TARGET_CHR <- "EBV"
 
 
-DB_frag <- as.character(opt["db"])
+#=====================================
+# get path of program directory
+#=====================================
+initial.options <- commandArgs(trailingOnly = FALSE)
+file.arg.name <- "--file="
+script.name <- sub(file.arg.name, "", initial.options[grep(file.arg.name, initial.options)])
+script.basename <- dirname(script.name)
+PROGRAM_getmatrix <- paste0(script.basename, "/Make_association_from_fragmentdb_selectedArea.pl")
+
+
+DB_fragment <- as.character(opt["db"])
 RESOLUTION <- as.numeric(as.character(opt["resolution"]))
-SLIDING <- as.numeric(as.character(opt["sliding"]))
-FILE_matrix <- as.character(opt["out"])
-FILE_object <- sub(".matrix", ".rds", FILE_matrix)
-TARGET_CHR <- as.character(opt["chr"])
+SLIDING <- as.character(opt["sliding"])
+if(SLIDING == "NA"){
+  SLIDING <- RESOLUTION
+}else{
+  SLIDING <- as.numeric(SLIDING)
+}
 SURROUNDING_BIN <- ((RESOLUTION / SLIDING) - 1)/2
 
+TARGET_CHR <- as.character(opt["chr"])
+TARGET_START <- as.character(opt["start"])
+TARGET_END <- as.character(opt["end"])
+
+FILE_matrix <- as.character(opt["out"])
+FILE_object <- sub(".matrix", ".rds", FILE_matrix)
+FILE_tmp <- paste0(FILE_matrix, "_tmp_matrixcalc")
+system(paste("perl", PROGRAM_getmatrix, "-i", DB_fragment, "-o", FILE_tmp, "-r", SLIDING, "-c", TARGET_CHR, "-s", TARGET_START, "-e", TARGET_END))
+
+map <- as.matrix(read.table(FILE_tmp, header=TRUE, check.names = FALSE))
+
+NUM_LINE <- nrow(map)
+r <- rownames(map)
+LocList <- strsplit(r, ":")
+LocMatrix <- matrix(unlist(LocList), ncol=3, byrow=TRUE)
+Location <- data.frame(id=1:NUM_LINE, chr=LocMatrix[,1], start=as.numeric(LocMatrix[,2]), end=as.numeric(LocMatrix[,3]), stringsAsFactors = FALSE)
+rm(r, LocList, LocMatrix)
 
 
-con = dbConnect(SQLite(), DB_frag)
-query <- paste0("select start1, end1, start2, end2, score from fragment where chr1==chr2 and chr2==", dQuote(TARGET_CHR), " and fragNum1 != fragNum2;")
-D_table <- dbGetQuery(con, query)
-dbDisconnect(con)
-rm(con)
-
-conv2bin <- function(s, e){
-  as.integer((s+e)/2/SLIDING)*SLIDING
-}
-
-D_table <- D_table %>% mutate(distance=abs(start1+end1-start2-end2)/2)
-D_table <- D_table %>% mutate(score=ifelse(distance < 10000, score*2, score))
-D_table <- D_table %>% select(-distance) 
-D_table <- D_table %>% mutate(bin1=conv2bin(D_table$start1, D_table$end1), bin2=conv2bin(D_table$start2, D_table$end2))
-D_table <- D_table %>% select(-start1, -end1, -start2, -end2)
-D_table <- D_table %>% group_by(bin1, bin2) %>% summarize(score=sum(score)) %>% as.data.frame()
-BIN_max <- D_table %>% pull(bin2) %>% max()
-
-BINs <- seq(0, BIN_max, by=SLIDING)
-
-D_table <- D_table %>% mutate(bin1=factor(bin1, levels = BINs, ordered = TRUE), bin2=factor(bin2, levels = BINs, ordered = TRUE))
-map <- D_table %>% tidyr::spread(key=bin2,value=score, fill=0, drop=FALSE)
-# この時点では、mapは右上部分しかスコアがないことに注意すること
-rm(D_table)
-map <- map[,-1]
-map <- as.matrix(map)
-colnames(map) <- BINs
-rownames(map) <- BINs
-
-### 下半分にコピー
-for(i in 1:(nrow(map)-1)){
-  map[cbind((i+1):nrow(map), i)] <- map[cbind(i, (i+1):nrow(map))]
-}
+SURROUNDING_BIN <- ((RESOLUTION / SLIDING) - 1)/2
 
 if(SURROUNDING_BIN != 0){
   map_new <- map
   for (i in (1:nrow(map))){
     CalcAverage <- function(m){
       sum(map[max(1,i-SURROUNDING_BIN):min(nrow(map),i+SURROUNDING_BIN),
-               max(1,m-SURROUNDING_BIN):min(ncol(map),m+SURROUNDING_BIN)], na.rm = TRUE)
+              max(1,m-SURROUNDING_BIN):min(ncol(map),m+SURROUNDING_BIN)], na.rm = TRUE)
     }
     
     score <- sapply(i:nrow(map), CalcAverage)
@@ -85,17 +74,18 @@ if(SURROUNDING_BIN != 0){
   rm(map_new)
 }
 
+Location <- Location %>% mutate(ss=ifelse(start - SURROUNDING_BIN * SLIDING < Location[1,"start"], Location[1,"start"], start - SURROUNDING_BIN * SLIDING),
+                                ee=ifelse(end + SURROUNDING_BIN * SLIDING > Location[nrow(Location),"end"], Location[nrow(Location),"end"], end + SURROUNDING_BIN * SLIDING))
+Location <- Location %>% mutate(binname=paste(chr, ss, ee, sep=":")) %>% pull(binname)
+colnames(map) <- Location
+rownames(map) <- Location
+rm(Location)
 
-BIN_names <- paste(TARGET_CHR, BINs, BINs + RESOLUTION - 1, sep=":")
-colnames(map) <- BIN_names
-rownames(map) <- BIN_names
 
 saveRDS(map, FILE_object)
 write.table(map, FILE_matrix, sep = "\t", row.names = TRUE, col.names = NA, quote = FALSE)
 
-
-
-
+file.remove(FILE_tmp)
 
 
 
