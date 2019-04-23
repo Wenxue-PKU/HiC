@@ -90,7 +90,22 @@ TIME_STAMP=$(date +"%Y-%m-%d")
 INPUT_FILES=$@
 
 
-
+case $ORGANISM in
+	pombe)	CHROM_LENGTH=12571820
+			FILE_CHROME_LENGTH=/wistar/bioinfo-nfs/hideki_projects/Genome/data/pombe/2018/LENGTH.txt
+			;;
+	human)	CHROM_LENGTH=3095677412
+			FILE_CHROME_LENGTH=/wistar/noma/Data/Human_seq/hg19/LENGTH.txt
+			;;
+	human_EBV)	CHROM_LENGTH=3157782322
+			FILE_CHROME_LENGTH=/wistar/noma/Data/Human_seq/hg19_EBV/LENGTH.txt
+			;;
+	mouse)	CHROM_LENGTH=2725537669
+			FILE_CHROME_LENGTH=/wistar/noma/Data/Mouse_seq/mm10/LENGTH.txt
+			;;
+	*)	echo "Please specify correct organism"
+		eixt 1 ;;
+esac
 
 #-----------------------------------------------
 # 複数の<NAME>_fragment.txtを読みこんで、まとめて左側の座標ごとに100のファイルに分類する
@@ -100,7 +115,7 @@ sbatch -n 1  --job-name=Mg_Sp_${NAME} -o "${DIR_LOG}/${TIME_STAMP}_split_dataFor
 cd ${DIR_DATA};
 for IN in $INPUT_FILES
 do
-	perl ${DIR_LIB}/Split_dataForFragDb.pl -i \${IN}_dataForFragDb.txt -x ${ORGANISM} -o ${NAME}
+	perl ${DIR_LIB}/Split_dataForFragDb.pl -i \${IN}_dataForFragDb.txt -l ${CHROM_LENGTH} -o ${NAME}
 done
 
 EOF
@@ -170,7 +185,7 @@ sbatch -n 1 --job-name=count_${NAME} $DEPEND -o "${DIR_LOG}/${TIME_STAMP}_count_
 JOB_ID=($(squeue -o "%j %F" -u htanizawa | grep -e "Mg_Reg_${NAME}" | cut -f2 -d' ' | xargs))
 JOB_ID_string=$(IFS=:; echo "${JOB_ID[*]}")
 DEPEND=""; [ -n "$JOB_ID_string" ] && DEPEND="--dependency=afterok:${JOB_ID_string}"
-sbatch -n 1 --job-name=distance_${NAME} $DEPEND -o "${DIR_LOG}/${TIME_STAMP}_distanceCurve_${NAME}.log" --open-mode append --wrap="cd ${DIR_DATA}; [ ! -e ${NAME}_distance.txt ] &&  perl ${DIR_LIB}/Create_distanceNormalize_data.pl -i ${NAME}_fragment.db -x ${ORGANISM} -o ${NAME}_distance.txt;"
+sbatch -n 1 --job-name=distance_${NAME} $DEPEND -o "${DIR_LOG}/${TIME_STAMP}_distanceCurve_${NAME}.log" --open-mode append --wrap="cd ${DIR_DATA}; [ ! -e ${NAME}_distance.txt ] &&  perl ${DIR_LIB}/Create_distanceNormalize_data.pl -i ${NAME}_fragment.db -l ${FILE_CHROME_LENGTH} -o ${NAME}_distance.txt;"
 
 
 

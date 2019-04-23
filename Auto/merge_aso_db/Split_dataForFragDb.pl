@@ -12,26 +12,20 @@ $| = 0;
 use DBI;
 
 if($ARGV[0] eq '--help'){
-	die "Usage : $0 -i [dataForFragDB.txt] -x [target organism (pombe or human or mouse or human_EBV) -o [output sample name]\n";
+	die "Usage : $0 -i [dataForFragDB.txt] -l [chromosome length] -o [output sample name]\n";
 }
 
-my %chromosome_length = (
-	'human' => 3095677412,
-	'human_EBV' => 3157782322,
-	'mouse' => 2725537669,
-	'pombe' => 12571820,
-);
 
 my %opt;
-getopts("i:x:o:", \%opt);
+getopts("i:l:o:", \%opt);
 my $FILE_dataForFragDB = $opt{i};
-my $TARGET_ORGANISM = $opt{x};
+my $CHROMOSOME_LENGTH = $opt{l};
 my $OUT_NAME = $opt{o};
 my $FILE_list = $OUT_NAME . "_list.txt";
 my $TMP_PREFIX = "tmpFrag_" . $OUT_NAME;
 
 # ファイルを作成する解像度
-my $RESOLUTION = $chromosome_length{$TARGET_ORGANISM} / 100;
+my $RESOLUTION = $CHROMOSOME_LENGTH / 100;
 
 # ファイルハンドル
 my %FH;
