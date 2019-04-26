@@ -4,6 +4,7 @@ suppressPackageStartupMessages(library("optparse"))
 option_list <- list(  
   make_option(c("-i", "--in"),help="Distance normalized matrix file"),
   make_option(c("-o", "--out"),help="Normalized matrix file"),
+  make_option(c("--log"), default="NA", help="log file"),
   make_option(c("--inter"), default="NA", help="read for inter-chromosome"),
   make_option(c("--times"), default="30", help="how many times apply normalization"),
   make_option(c("-t", "--threshold"), default="0.02", help="cut off threshold (%). Line with less than this value will remove")
@@ -16,9 +17,13 @@ FILE_inter <- as.character(opt["inter"])
 Threshold <- as.numeric(as.character(opt["threshold"]))
 
 FILE_object <- sub(".matrix", ".rds", FILE_matrix)
-FILE_log <- sub(".matrix", ".log", FILE_out)
+if(as.character(opt["log"]) == "NA"){
+  FILE_log <- sub(".matrix", ".log", FILE_out)
+}else{
+  FILE_log <- as.character(opt["log"])
+}
 if(!file.exists(FILE_object)){
-  if(!file.exists(FILE_matrix)){
+  if(file.exists(FILE_matrix)){
     map <- as.matrix(read.table(FILE_matrix, header=TRUE, check.names = FALSE))
   }else{
     cat("There is not", FILE_matrix, "file\n")
