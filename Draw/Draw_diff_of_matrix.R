@@ -28,11 +28,12 @@ option_list <- list(
   make_option(c("--lineh_chr"), default="NULL", help="location of horizontal line , separated"),
   make_option(c("--lineh_pos"), default="NULL", help="location of horizontal line , separated"),
   make_option(c("--color"), default="gentle", help="gentle or blight"),
-  make_option(c("--circle"), default="NULL", help="location pairs to draw circles on output")
+  make_option(c("--circle"), default="NULL", help="location pairs to draw circles on output"),
+  make_option(c("--cairo"), default="TRUE", help="use cairo for output")
 )
 opt <- parse_args(OptionParser(option_list=option_list))
 
-
+FLAG_cairo <- eval(parse(text=as.character(opt["cairo"])))
 FILE_matrix1 <- as.character(opt["file1"])
 FILE_matrix2 <- as.character(opt["file2"])
 FILE_object1 <- sub("matrix", "rds", FILE_matrix1)
@@ -183,17 +184,10 @@ if(as.character(opt["unit"]) == "p"){
 mat.diff <- ifelse(mat.diff < (Threshold * -1), Threshold * -1, mat.diff)
 mat.diff <- ifelse(mat.diff > Threshold, Threshold, mat.diff)
 
-# 上位5%の相当するスコア
+
 tmp <- as.numeric(mat.diff)
 tmp <- tmp[!is.na(tmp)]
-T95 <- sort(tmp)[round(length(tmp)*0.95)]
-
-# mapの値をカテゴリー分け
-lseq <- function(from=1, to=100000, length.out=6) {
-  exp(seq(log(from), log(to), length.out = length.out))
-}
-unit <- unique(round(c(seq(0, T95, length.out=95), lseq(T95, Threshold+1, length.out=5)), digits=2))
-bk <- unique(c(rev(unit)*-1, unit))
+bk <- seq(-Threshold, Threshold, length.out=100)
 mat.diff <- matrix(as.integer(cut(mat.diff, breaks = bk, include.lowest = TRUE)), nrow = nrow(mat.diff), ncol=ncol(mat.diff))
 
 # 色分け
@@ -225,7 +219,13 @@ Transform <- function(mat){
 
 
 if(as.character(opt["out"]) != "NULL"){
-  png(file=as.character(opt["out"]), width=width, height=height, units="px", bg="white")
+  
+  if(FLAG_cairo){
+    suppressWarnings(suppressMessages(library(Cairo)))
+    CairoPNG(as.character(opt["out"]), width=width, height=height, units="px", bg="white")
+  }else{
+    png(file=as.character(opt["out"]), width=width, height=height, units="px", bg="white")
+  }
   par(oma=c(0,0,0,0), mar=c(0,0,0,0))
   image(Transform(mat.diff), col=colors, axes=F)
   
