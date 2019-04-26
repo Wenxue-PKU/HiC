@@ -7,7 +7,8 @@ option_list <- list(
   make_option(c("--log"), default="NA", help="log file"),
   make_option(c("--inter"), default="NA", help="read for inter-chromosome"),
   make_option(c("--times"), default="30", help="how many times apply normalization"),
-  make_option(c("-t", "--threshold"), default="0.02", help="cut off threshold (%). Line with less than this value will remove")
+  make_option(c("-t", "--threshold"), default="0.02", help="cut off threshold (%). Line with less than this value will remove"),
+  make_option(c("-q", "--quiet"), default="FALSE", help="don't output log")
 )
 opt <- parse_args(OptionParser(option_list=option_list))
 
@@ -15,6 +16,7 @@ FILE_matrix <- as.character(opt["in"])
 FILE_out <- as.character(opt["out"])
 FILE_inter <- as.character(opt["inter"])
 Threshold <- as.numeric(as.character(opt["threshold"]))
+FLAG_quiet <- as.character(opt["quiet"])
 
 FILE_object <- sub(".matrix", ".rds", FILE_matrix)
 if(as.character(opt["log"]) == "NA"){
@@ -80,13 +82,17 @@ multi <- function(m, times){
   initial_var <- initial_var / mean(initial_var[initial_var != 0], na.rm=T)
   initial_var <- ifelse(initial_var == 0, 1, initial_var)
   initial_var <- var(initial_var)
-  cat("Variance at 0 times:\t", initial_var, "\n", sep="", file = FILE_log, append = TRUE)
+  if(FLAG_quiet == "TRUE"){
+    cat("Variance at 0 times:\t", initial_var, "\n", sep="", file = FILE_log, append = TRUE)
+  }
   
   for(i in 1:times){
     S <- Single(m, B)
     m <- S$map
     B <- B * S$bias
-    cat("Variance at ", i, " times:\t", var(S$bias), "\n", sep="", file = FILE_log, append = TRUE)
+    if(FLAG_quiet == "TRUE"){
+      cat("Variance at ", i, " times:\t", var(S$bias), "\n", sep="", file = FILE_log, append = TRUE)
+    }
   }
   m
 }
