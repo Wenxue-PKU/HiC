@@ -137,7 +137,6 @@ esac
 DIR_tmp=${FILE_OUT}_tmpDir
 [ ! -e ${DIR_tmp} ] && mkdir ${DIR_tmp} && mkdir ${DIR_tmp}/log ${DIR_tmp}/scores
 UNIQ_ID=$(echo $FILE_OUT | rev | cut -c 1-20 | rev)
-FILE_excel=${FILE_OUT/.txt/.xlsx}
 FILE_log=${FILE_OUT/.txt/.log}
 
 #==============================================================
@@ -145,7 +144,7 @@ FILE_log=${FILE_OUT/.txt/.log}
 #==============================================================
 for CHR in $CHRs
 do
-	FILE_in=${DIR_DATA}/${NAME}/${RESOLUTION}/ICE/${CHR}.rds
+	FILE_in=${DIR_DATA}/${NAME}/${RESOLUTION}/ICE2/${CHR}.rds
 	sbatch -n 4 --job-name=si_${UNIQ_ID}_${CHR} -o "${DIR_tmp}/log/define_significant_pairs_${CHR}.log" --open-mode append --wrap="Rscript --vanilla --slave ${DIR_LIB}/Define_all_significant_pairs.R -i ${FILE_in} -o ${DIR_tmp}/scores/${CHR}.txt --max ${MAX_distance} --control $T_CONTROL --FDR $FDR"
 done
 
@@ -158,7 +157,7 @@ sbatch -n 1 --job-name=si2_${UNIQ_ID} $DEPEND -o "${FILE_log}" --open-mode appen
 cd ${DIR_tmp}/scores
 cat chr1.txt | head -n1 > $FILE_OUT
 ls chr*.txt | xargs -n1 | xargs -n1 -I@ sh -c "cat \@ | tail -n+2" | sort -k12,12g >> $FILE_OUT
-ls ${DIR_tmp}/log/define_significant_pairs_*.log | xargs -n1 | xargs -n1 -I@ sh -c "cat @ | cut -d':' -f2 | tr -d ' ' | xargs" | awk -v OFS='\t' 'BEGIN{Nsig=0; Nfirst=0; Nall=0}{Nsig+=\$3; Nfirst+=\$2; Nall+=\$1}END{print "Total combinations: "Nall; print "Total first filtered: "Nfirst; print "Total significant: "Nsig;}'
+ls ${DIR_tmp}/log/define_significant_pairs_*.log | xargs -n1 | xargs -n1 -I@ sh -c "cat @ | cut -d':' -f2 | tr -d ' ' | xargs" | awk -v OFS='\t' 'BEGIN{Nsig=0; Nfirst=0; Nall=0}{Nsig+=\$6; Nfirst+=\$3; Nall+=\$1}END{print "Total combinations: "Nall; print "Total first filtered: "Nfirst; print "Total significant: "Nsig;}'
 [ "$FLAG_remove_tmp" = "TRUE" ] && rm -rf ${DIR_tmp}
 EOF
 
