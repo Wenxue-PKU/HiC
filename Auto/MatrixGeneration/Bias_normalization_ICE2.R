@@ -82,7 +82,7 @@ multi <- function(m, times){
   initial_var <- initial_var / mean(initial_var[initial_var != 0], na.rm=T)
   initial_var <- ifelse(initial_var == 0, 1, initial_var)
   initial_var <- var(initial_var)
-  if(FLAG_quiet == "TRUE"){
+  if(FLAG_quiet == "FALSE"){
     cat("Variance at 0 times:\t", initial_var, "\n", sep="", file = FILE_log, append = TRUE)
   }
   
@@ -90,7 +90,7 @@ multi <- function(m, times){
     S <- Single(m, B)
     m <- S$map
     B <- B * S$bias
-    if(FLAG_quiet == "TRUE"){
+    if(FLAG_quiet == "FALSE"){
       cat("Variance at ", i, " times:\t", var(S$bias), "\n", sep="", file = FILE_log, append = TRUE)
     }
   }
