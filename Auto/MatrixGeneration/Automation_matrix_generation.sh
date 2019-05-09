@@ -197,6 +197,8 @@ if [ $FLAG_NORM = "TRUE" ]; then
 			[ ! -e ${DIR_DATA}/${NAME}/${RESOLUTION_string}/ICE/${CHR}.rds ] && sbatch -N 1 -n 5 --exclusive=user --job-name=ICE_${NAME}_${RESOLUTION_string}_${CHR} $DEPEND -o ${FILE_LOG} --open-mode append --wrap="cd ${DIR_DATA}/${NAME}/${RESOLUTION_string}; Rscript --vanilla --slave ${DIR_LIB}/Bias_normalization.R -i Raw/${CHR}.matrix -o ICE/${CHR}.matrix --inter InterBin/${CHR}.txt --times 30 && Rscript --slave --vanilla ${DIR_LIB}/../../Conv/Convert_matrix_to_object.R -i ICE/${CHR}.matrix"
 
 			[ ! -e ${DIR_DATA}/${NAME}/${RESOLUTION_string}/ICE2/${CHR}.rds ] && sbatch -N 1 -n 5 --exclusive=user --job-name=ICE2_${NAME}_${RESOLUTION_string}_${CHR} $DEPEND -o ${FILE_LOG} --open-mode append --wrap="cd ${DIR_DATA}/${NAME}/${RESOLUTION_string}; Rscript --vanilla --slave ${DIR_LIB}/Bias_normalization_ICE2.R -i Raw/${CHR}.matrix -o ICE2/${CHR}.matrix --inter InterBin/${CHR}.txt --times 30 && Rscript --slave --vanilla ${DIR_LIB}/../../Conv/Convert_matrix_to_object.R -i ICE2/${CHR}.matrix"
+
+			sleep 0.01
 		done
 	else
 		sbatch -N 1 -n 5 --exclusive --job-name=ICE_${NAME}_${RESOLUTION_string} $DEPEND -o ${FILE_LOG} --open-mode append --wrap="cd ${DIR_DATA}/${NAME}/${RESOLUTION_string}; Rscript --vanilla --slave ${DIR_LIB}/Bias_normalization.R -i Raw/ALL.matrix -o ICE/ALL.matrix --times 30 && Rscript --slave --vanilla ${DIR_LIB}/../../Conv/Convert_matrix_to_object.R -i ICE/ALL.matrix"
