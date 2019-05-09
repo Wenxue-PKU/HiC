@@ -43,7 +43,7 @@ format_url = workbook.add_format({'underline':  1, 'font_color': 'blue','valign'
 #==========================================
 worksheet.set_column('B:C', 12)
 worksheet.set_column('E:G', 12)
-worksheet.set_column(11,len(SAMPLES)+11, 13.5)
+worksheet.set_column(11,len(SAMPLES)+11, 12.5)
 
 string_col = set([0,3])
 commmaNum_col = set([1,2,4,5,6])
@@ -71,7 +71,6 @@ for i in range(0,len(DATA)):
 	
 	for j in range(0, len(SAMPLES)):
 		FILE_image = DIR_image + "/rank_" + str(row) + "_" + SAMPLES[j] + ".png"
-		print(FILE_image)
 		if os.path.isfile(FILE_image):
 			worksheet.insert_image(row,j+11, FILE_image, {'x_offset': 2, 'y_offset': 2, 'x_scale': .18, 'y_scale': .18})
 
