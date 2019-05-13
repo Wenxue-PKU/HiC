@@ -202,7 +202,7 @@ do
 		CHR2=\$(sqlite3 ${DB_loc} "select chr2 from loc where id='\${id}'")
 		START2=\$(sqlite3 ${DB_loc} "select start2 from loc where id='\${id}'")
 		END2=\$(sqlite3 ${DB_loc} "select end2 from loc where id='\${id}'")
-		sbatch -n 4 --job-name=drw_${UNIQ_ID}_\${id} -o "${DIR_tmp}/log/drawGraph_\${id}.log" --open-mode append --wrap="Rscript --vanilla --slave ${DIR_LIB}/../../Draw/Draw_matrix.R -i ${DIR_DATA}/\${NAME}/${RESOLUTION}/Raw/\${CHR1}.rds --normalize NA --zero NA --na na --chr \${CHR1} --start \${START1} --end \${END1} --chr2 \${CHR2} --start2 \${START2} --end2 \${END2} --unit p --max 0.95 --color matlab --width 500 -o ${DIR_tmp}/img/rank_\${id}_\${NAME}.png"
+		sbatch -n 4 --job-name=drw_${UNIQ_ID}_\${id} \$(sq --node) -o "${DIR_tmp}/log/drawGraph_\${id}.log" --open-mode append --wrap="Rscript --vanilla --slave ${DIR_LIB}/../../Draw/Draw_matrix.R -i ${DIR_DATA}/\${NAME}/${RESOLUTION}/Raw/\${CHR1}.rds --normalize NA --zero NA --na na --chr \${CHR1} --start \${START1} --end \${END1} --chr2 \${CHR2} --start2 \${START2} --end2 \${END2} --unit p --max 0.95 --color matlab --width 500 -o ${DIR_tmp}/img/rank_\${id}_\${NAME}.png"
 	done
 done
 
