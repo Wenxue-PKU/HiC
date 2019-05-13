@@ -5,7 +5,8 @@ suppressPackageStartupMessages(library("optparse"))
 option_list <- list(  
   make_option(c("-i", "--in"), default="NA", help="all rds separated by ,"),
   make_option(c("-o", "--out"), default="NA", help="output file of p-values"),
-  make_option(c("-g", "--group"), default="NA", help="groups (1 or 2) separated by ,. logFC >0 means 1<2")
+  make_option(c("-g", "--group"), default="NA", help="groups (1 or 2) separated by ,. logFC >0 means 1<2"),
+  make_option(c("--filtering"), default="FDR", help="how to filter result ?")
 )
 opt <- parse_args(OptionParser(option_list=option_list))
 
@@ -102,14 +103,19 @@ result <- glmQLFTest(fit)
 adj.p <- p.adjust(result$table$PValue, method="BH")
 NUM <- sum(result$table$PValue <= 0.05)
 
+
+FILETER_METHOD <- as.character(opt["filtering"])
+
 useful.cols <- as.vector(outer(c("seqnames", "start", "end"), 1:2, paste0))
 inter.frame <- as.data.frame(interactions(data))[,useful.cols]
 results.r <- data.frame(inter.frame, result$table, FDR=adj.p)
 results.r <- results.r[order(results.r$PValue),]
 if(NUM == 0){
   results.r <- results.r[1:10,]
-}else{
+}else if(FILETER_METHOD == "FDR"){
   results.r <- results.r[results.r$FDR < 0.05,]
+}else{
+  results.r <- results.r[results.r$PValue < 0.05,]
 }
 write.table(results.r, file=FILE_output, sep="\t", quote=FALSE, row.names=FALSE, col.names = TRUE, append = FALSE)
 

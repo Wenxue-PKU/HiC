@@ -36,6 +36,9 @@ Description
 
 	--draw_range [ex 200000]
 		half size of example map width. resolution x 20 seems good. (for 10kb resolution, draw 200kb half size = 200000)
+
+	--filtering [FDR/Pval]
+		how to restrict the result. FDR (FDR < 0.05) or Pval (Pvalue < 0.05)
 EOF
 
 }
@@ -45,7 +48,7 @@ get_version(){
 }
 
 SHORT=hvr:g:d:o:x:t:
-LONG=help,version,resolution:,group:,data:,out:,organism:,title:,draw_range:
+LONG=help,version,resolution:,group:,data:,out:,organism:,title:,draw_range:,filtering:
 PARSED=`getopt --options $SHORT --longoptions $LONG --name "$0" -- "$@"`
 if [[ $? -ne 0 ]]; then
 	exit 2
@@ -90,6 +93,10 @@ while true; do
 			DRAW_WIDTH="$2"
 			shift 2
 			;;
+		--filtering)
+			FILTER_METHOD="$2"
+			shift 2
+			;;
 		--)
 			shift
 			break
@@ -111,6 +118,7 @@ TIME_STAMP=$(date +"%Y-%m-%d")
 [ ! -n "${ORGANISM}" ] && echo "Please specify organism" && exit 1
 [ ! -n "${DRAW_WIDTH}" ] && echo "Please specify draw half width" && exit 1
 EXCEL_tab=${EXCEL_tab:-"Sheet1"}
+FILTER_METHOD=${FILTER_METHOD:-"FDR"}
 
 NAME_LIST="$@"
 
@@ -135,7 +143,7 @@ FILE_log=${FILE_OUT/.txt/.log}
 for CHR in $CHRs
 do
 	FILE_in=$(echo "$NAME_LIST" | xargs -n1 | xargs -I@ sh -c "echo ${DIR_DATA}/\@/${RESOLUTION}/Raw/${CHR}.rds" | xargs | tr ' ' ',')
-	sbatch -n 4 --job-name=si_${UNIQ_ID}_${CHR} $(sq --node) -o "${DIR_tmp}/log/define_significant_pairs_${CHR}.log" --open-mode append --wrap="Rscript2 --vanilla --slave ${DIR_LIB}/Extract_diff_pairs.R -i ${FILE_in} -o ${DIR_tmp}/scores/${CHR}.txt --group ${group}"
+	sbatch -n 4 --job-name=si_${UNIQ_ID}_${CHR} $(sq --node) -o "${DIR_tmp}/log/define_significant_pairs_${CHR}.log" --open-mode append --wrap="Rscript2 --vanilla --slave ${DIR_LIB}/Extract_diff_pairs.R -i ${FILE_in} -o ${DIR_tmp}/scores/${CHR}.txt --group ${group} --filtering $FILTER_METHOD"
 done
 
 ### 結果をまとめてFDRでソートする
