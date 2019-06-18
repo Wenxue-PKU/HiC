@@ -171,14 +171,14 @@ esac
 #-----------------------------------------------
 # Alignment
 #-----------------------------------------------
-sbatch -n 12 --job-name=aln_${NAME} -o "${DIR_LOG}/${TIME_STAMP}_Alignment_${NAME}_1.log" --export=NAME="${NAME}_1",DIR_LIB="${DIR_LIB}",DIR_DATA="${DIR_DATA}",BOWTIE_TARGET="${BOWTIE_TARGET}",BOWTIE2_INDEXES="${BOWTIE2_INDEXES}" --open-mode append ${DIR_LIB}/Alignment_with_trimming.sh
-sbatch -n 12 --job-name=aln_${NAME} -o "${DIR_LOG}/${TIME_STAMP}_Alignment_${NAME}_2.log" --export=NAME="${NAME}_2",DIR_LIB="${DIR_LIB}",DIR_DATA="${DIR_DATA}",BOWTIE_TARGET="${BOWTIE_TARGET}",BOWTIE2_INDEXES="${BOWTIE2_INDEXES}" --open-mode append ${DIR_LIB}/Alignment_with_trimming.sh
+sbatch -n 12 --job-name=aln_${NAME} $(sq --node) -o "${DIR_LOG}/${TIME_STAMP}_Alignment_${NAME}_1.log" --export=NAME="${NAME}_1",DIR_LIB="${DIR_LIB}",DIR_DATA="${DIR_DATA}",BOWTIE_TARGET="${BOWTIE_TARGET}",BOWTIE2_INDEXES="${BOWTIE2_INDEXES}" --open-mode append ${DIR_LIB}/Alignment_with_trimming.sh
+sbatch -n 12 --job-name=aln_${NAME} $(sq --node) -o "${DIR_LOG}/${TIME_STAMP}_Alignment_${NAME}_2.log" --export=NAME="${NAME}_2",DIR_LIB="${DIR_LIB}",DIR_DATA="${DIR_DATA}",BOWTIE_TARGET="${BOWTIE_TARGET}",BOWTIE2_INDEXES="${BOWTIE2_INDEXES}" --open-mode append ${DIR_LIB}/Alignment_with_trimming.sh
 
 
 #-----------------------------------------------
 # fastqc
 #-----------------------------------------------
-[ "$FLAG_fastqc" = "TRUE" ] &&  [ ! -e ${DIR_DATA}/fastqc/${NAME}_fastqc ] && sbatch -n 12 --job-name=fastqc_${NAME}_1 -o "${DIR_LOG}/${TIME_STAMP}_fastqc_${NAME}_1.log" --open-mode append --wrap="cd ${DIR_DATA}; /applications/fastqc/current/fastqc -o fastqc/ --nogroup -t 12 ${NAME}_1.fastq" && sbatch -n 12 --job-name=fastqc_${NAME}_2 -o "${DIR_LOG}/${TIME_STAMP}_fastqc_${NAME}_2.log" --open-mode append --wrap="cd ${DIR_DATA}; /applications/fastqc/current/fastqc -o fastqc/ --nogroup -t 12 ${NAME}_2.fastq"
+[ "$FLAG_fastqc" = "TRUE" ] &&  [ ! -e ${DIR_DATA}/fastqc/${NAME}_fastqc ] && sbatch -n 12 --job-name=fastqc_${NAME}_1 $(sq --node) -o "${DIR_LOG}/${TIME_STAMP}_fastqc_${NAME}_1.log" --open-mode append --wrap="cd ${DIR_DATA}; /applications/fastqc/current/fastqc -o fastqc/ --nogroup -t 12 ${NAME}_1.fastq" && sbatch -n 12 --job-name=fastqc_${NAME}_2 -o "${DIR_LOG}/${TIME_STAMP}_fastqc_${NAME}_2.log" --open-mode append --wrap="cd ${DIR_DATA}; /applications/fastqc/current/fastqc -o fastqc/ --nogroup -t 12 ${NAME}_2.fastq"
 
 
 
@@ -191,7 +191,7 @@ sbatch -n 12 --job-name=aln_${NAME} -o "${DIR_LOG}/${TIME_STAMP}_Alignment_${NAM
 JOB_ID=($(squeue -o "%j %F" -u htanizawa | grep -e "aln_${NAME}" | cut -f2 -d' ' | xargs))
 JOB_ID_string=$(IFS=:; echo "${JOB_ID[*]}")
 DEPEND=""; [ -n "$JOB_ID_string" ] && DEPEND="--dependency=afterok:${JOB_ID_string}"
-sbatch -n 1 --job-name=map_${NAME} $DEPEND -o "${DIR_LOG}/${TIME_STAMP}_make_map_${NAME}.log" --open-mode append --wrap="cd ${DIR_DATA}; perl ${DIR_LIB}/Assign_nearest_enzymeSites.pl -a ${NAME}_1.sam -b ${NAME}_2.sam -o ${NAME}.map -e ${FILE_enzyme_def} -d ${FILE_enzyme_index}"
+sbatch -n 1 --job-name=map_${NAME} $DEPEND $(sq --node) -o "${DIR_LOG}/${TIME_STAMP}_make_map_${NAME}.log" --open-mode append --wrap="cd ${DIR_DATA}; perl ${DIR_LIB}/Assign_nearest_enzymeSites.pl -a ${NAME}_1.sam -b ${NAME}_2.sam -o ${NAME}.map -e ${FILE_enzyme_def} -d ${FILE_enzyme_index}"
 
 
 
@@ -205,7 +205,7 @@ sbatch -n 1 --job-name=map_${NAME} $DEPEND -o "${DIR_LOG}/${TIME_STAMP}_make_map
 JOB_ID=($(squeue -o "%j %F" -u htanizawa | grep -e "map_${NAME}" | cut -f2 -d' ' | xargs))
 JOB_ID_string=$(IFS=:; echo "${JOB_ID[*]}")
 DEPEND=""; [ -n "$JOB_ID_string" ] && DEPEND="--dependency=afterok:${JOB_ID_string}"
-sbatch -n 1 --job-name=split_${NAME} $DEPEND -o "${DIR_LOG}/${TIME_STAMP}_sort_${NAME}.log" --open-mode append --wrap="cd ${DIR_DATA}; perl ${DIR_LIB}/Split_MapFile.pl -i ${NAME}.map -l ${CHROM_LENGTH} -o ${NAME}_list.txt"
+sbatch -n 1 --job-name=split_${NAME} $DEPEND $(sq --node) -o "${DIR_LOG}/${TIME_STAMP}_sort_${NAME}.log" --open-mode append --wrap="cd ${DIR_DATA}; perl ${DIR_LIB}/Split_MapFile.pl -i ${NAME}.map -l ${CHROM_LENGTH} -o ${NAME}_list.txt"
 
 
 
@@ -214,7 +214,7 @@ sbatch -n 1 --job-name=split_${NAME} $DEPEND -o "${DIR_LOG}/${TIME_STAMP}_sort_$
 JOB_ID=($(squeue -o "%j %F" -u htanizawa | grep -e "split_${NAME}" | cut -f2 -d' ' | xargs))
 JOB_ID_string=$(IFS=:; echo "${JOB_ID[*]}")
 DEPEND=""; [ -n "$JOB_ID_string" ] && DEPEND="--dependency=afterok:${JOB_ID_string}"
-sbatch --array=1-200 --job-name=sort_${NAME} $DEPEND -o "${DIR_LOG}/${TIME_STAMP}_sort_${NAME}.log" --export=NAME="${NAME}",DIR_DATA="${DIR_DATA}" --open-mode append ${DIR_LIB}/sorting.sh
+sbatch --array=1-200 --job-name=sort_${NAME} $DEPEND $(sq --node) -o "${DIR_LOG}/${TIME_STAMP}_sort_${NAME}.log" --export=NAME="${NAME}",DIR_DATA="${DIR_DATA}" --open-mode append ${DIR_LIB}/sorting.sh
 
 
 ### merge files
@@ -222,14 +222,14 @@ sbatch --array=1-200 --job-name=sort_${NAME} $DEPEND -o "${DIR_LOG}/${TIME_STAMP
 JOB_ID=($(squeue -o "%j %F" -u htanizawa | grep -e "sort_${NAME}" | cut -f2 -d' ' | xargs))
 JOB_ID_string=$(IFS=:; echo "${JOB_ID[*]}")
 DEPEND=""; [ -n "$JOB_ID_string" ] && DEPEND="--dependency=afterok:${JOB_ID_string}"
-sbatch -n 1 --job-name=merge_${NAME} $DEPEND -o "${DIR_LOG}/${TIME_STAMP}_sort_${NAME}.log" --open-mode append --wrap="cd ${DIR_DATA}; cat \`cat ${NAME}_list.txt\` > ${NAME}_sort.map"
+sbatch -n 1 --job-name=merge_${NAME} $DEPEND $(sq --node) -o "${DIR_LOG}/${TIME_STAMP}_sort_${NAME}.log" --open-mode append --wrap="cd ${DIR_DATA}; cat \`cat ${NAME}_list.txt\` > ${NAME}_sort.map"
 
 
 ### remove temporary files
 JOB_ID=($(squeue -o "%j %F" -u htanizawa | grep -e "merge_${NAME}" | cut -f2 -d' ' | xargs))
 JOB_ID_string=$(IFS=:; echo "${JOB_ID[*]}")
 DEPEND=""; [ -n "$JOB_ID_string" ] && DEPEND="--dependency=afterok:${JOB_ID_string}"
-sbatch -n 1 --job-name=remove_${NAME} $DEPEND -o "${DIR_LOG}/${TIME_STAMP}_sort_${NAME}.log" --open-mode append --wrap="cd ${DIR_DATA}; rm \`cat ${NAME}_list.txt\` ; rm ${NAME}_list.txt"
+sbatch -n 1 --job-name=remove_${NAME} $DEPEND $(sq --node) -o "${DIR_LOG}/${TIME_STAMP}_sort_${NAME}.log" --open-mode append --wrap="cd ${DIR_DATA}; rm \`cat ${NAME}_list.txt\` ; rm ${NAME}_list.txt"
 
 
 #-----------------------------------------------
@@ -237,13 +237,13 @@ sbatch -n 1 --job-name=remove_${NAME} $DEPEND -o "${DIR_LOG}/${TIME_STAMP}_sort_
 #-----------------------------------------------
 ### register to database
 # <NAME>_sort.mapを読みこんで、まったく同じエントリーは除去して、データベースに登録する
-sbatch -N 1 -n 1 --exclusive=user --job-name=db_${NAME} $DEPEND -o "${DIR_LOG}/${TIME_STAMP}_db_${NAME}.log" --open-mode append --wrap="cd ${DIR_DATA}; perl ${DIR_LIB}/Map2database.pl -i ${NAME}_sort.map -o ${NAME}.db"
+sbatch -N 1 -n 1 --exclusive=user --job-name=db_${NAME} $DEPEND $(sq --node) -o "${DIR_LOG}/${TIME_STAMP}_db_${NAME}.log" --open-mode append --wrap="cd ${DIR_DATA}; perl ${DIR_LIB}/Map2database.pl -i ${NAME}_sort.map -o ${NAME}.db"
 
 
 #-----------------------------------------------
 # HiC mapの解像度
 #-----------------------------------------------
-sbatch -n 1 --job-name=resolution_${NAME} $DEPEND -o "${DIR_LOG}/${TIME_STAMP}_HiCmap_resolution_${NAME}.log" --open-mode append --wrap="bash ${DIR_LIB}/../../Statistics/HiCmap_resolution.sh -L $CHROM_LENGTH --count ${DIR_DATA}/${NAME}_count_for_resolution.txt ${DIR_DATA}/${NAME}_sort.map"
+sbatch -n 1 --job-name=resolution_${NAME} $DEPEND $(sq --node) -o "${DIR_LOG}/${TIME_STAMP}_HiCmap_resolution_${NAME}.log" --open-mode append --wrap="bash ${DIR_LIB}/../../Statistics/HiCmap_resolution.sh -L $CHROM_LENGTH --count ${DIR_DATA}/${NAME}_count_for_resolution.txt ${DIR_DATA}/${NAME}_sort.map"
 
 #-----------------------------------------------
 # read数を調べる
@@ -253,7 +253,7 @@ sbatch -n 1 --job-name=resolution_${NAME} $DEPEND -o "${DIR_LOG}/${TIME_STAMP}_H
 JOB_ID=($(squeue -o "%j %F" -u htanizawa | grep -e "db_${NAME}" | cut -f2 -d' ' | xargs))
 JOB_ID_string=$(IFS=:; echo "${JOB_ID[*]}")
 DEPEND=""; [ -n "$JOB_ID_string" ] && DEPEND="--dependency=afterok:${JOB_ID_string}"
-sbatch -n 1 --job-name=count_${NAME} $DEPEND -o "${DIR_LOG}/${TIME_STAMP}_count_${NAME}.log" --export=SAMPLE="${NAME}",DIR_DATA="${DIR_DATA}" --open-mode append ${DIR_LIB}/Count_reads.sh
+sbatch -n 1 --job-name=count_${NAME} $DEPEND $(sq --node) -o "${DIR_LOG}/${TIME_STAMP}_count_${NAME}.log" --export=SAMPLE="${NAME}",DIR_DATA="${DIR_DATA}" --open-mode append ${DIR_LIB}/Count_reads.sh
 
 #-----------------------------------------------
 # <NAME>.dbから<NAME>_fragment.dbを作る
@@ -265,7 +265,7 @@ sbatch -n 1 --job-name=count_${NAME} $DEPEND -o "${DIR_LOG}/${TIME_STAMP}_count_
 # 制限酵素部位ではなく、制限酵素断片のIDに直す(場所がLの場合はIDを１つ減らす）
 # 10kb以内の距離で、向きが異なるペアについては除去する
 # 染色体を１００に分割し、左の断片の中心位置のbinを基準に異なるファイルに出力する。出力したファイルのリストを<NAME>_list.txtとして出力する
-sbatch -n 1 --job-name=DBsp_${NAME} $DEPEND -o "${DIR_LOG}/${TIME_STAMP}_create_fragmentdb_${NAME}.log" --open-mode append --wrap="cd ${DIR_DATA}; perl ${DIR_LIB}/Split_database.pl -i ${NAME}.db -l ${CHROM_LENGTH} -o ${NAME}_list.txt -m ${MAPQ_THRESHOLD} -e ${FILE_enzyme_def}"
+sbatch -n 1 --job-name=DBsp_${NAME} $DEPEND -o "${DIR_LOG}/${TIME_STAMP}_create_fragmentdb_${NAME}.log" --open-mode append --wrap="cd ${DIR_DATA}; perl ${DIR_LIB}/Split_database.pl -i ${NAME}.db -l ${CHROM_LENGTH} $(sq --node) -o ${NAME}_list.txt -m ${MAPQ_THRESHOLD} -e ${FILE_enzyme_def}"
 
 
 ### count duplicated number
@@ -273,25 +273,25 @@ sbatch -n 1 --job-name=DBsp_${NAME} $DEPEND -o "${DIR_LOG}/${TIME_STAMP}_create_
 JOB_ID=($(squeue -o "%j %F" -u htanizawa | grep -e "DBsp_${NAME}" | cut -f2 -d' ' | xargs))
 JOB_ID_string=$(IFS=:; echo "${JOB_ID[*]}")
 DEPEND=""; [ -n "$JOB_ID_string" ] && DEPEND="--dependency=afterok:${JOB_ID_string}"
-sbatch --array=1-200 --job-name=DBcou_${NAME} $DEPEND -o "${DIR_LOG}/${TIME_STAMP}_create_fragmentdb_${NAME}.log" --export=NAME="${NAME}",DIR_DATA="${DIR_DATA}",DIR_LIB="${DIR_LIB}" --open-mode append ${DIR_LIB}/Editing_filterReadsCount_jobArray.sh
+sbatch --array=1-200 --job-name=DBcou_${NAME} $DEPEND $(sq --node) -o "${DIR_LOG}/${TIME_STAMP}_create_fragmentdb_${NAME}.log" --export=NAME="${NAME}",DIR_DATA="${DIR_DATA}",DIR_LIB="${DIR_LIB}" --open-mode append ${DIR_LIB}/Editing_filterReadsCount_jobArray.sh
 
 
 ### merge files
 JOB_ID=($(squeue -o "%j %F" -u htanizawa | grep -e "DBcou_${NAME}" | cut -f2 -d' ' | xargs))
 JOB_ID_string=$(IFS=:; echo "${JOB_ID[*]}")
 DEPEND=""; [ -n "$JOB_ID_string" ] && DEPEND="--dependency=afterok:${JOB_ID_string}"
-sbatch -n 1 --job-name=DBmer_${NAME} $DEPEND -o "${DIR_LOG}/${TIME_STAMP}_create_fragmentdb_${NAME}.log" --open-mode append --wrap="cd ${DIR_DATA}; cat \`cat ${NAME}_list.txt\` > ${NAME}_dataForFragDb.txt"
+sbatch -n 1 --job-name=DBmer_${NAME} $DEPEND $(sq --node) -o "${DIR_LOG}/${TIME_STAMP}_create_fragmentdb_${NAME}.log" --open-mode append --wrap="cd ${DIR_DATA}; cat \`cat ${NAME}_list.txt\` > ${NAME}_dataForFragDb.txt"
 
 
 ### remove temporary files
 JOB_ID=($(squeue -o "%j %F" -u htanizawa | grep -e "DBmer_${NAME}" | cut -f2 -d' ' | xargs))
 JOB_ID_string=$(IFS=:; echo "${JOB_ID[*]}")
 DEPEND=""; [ -n "$JOB_ID_string" ] && DEPEND="--dependency=afterok:${JOB_ID_string}"
-sbatch -n 1 --job-name=DBrem_${NAME} $DEPEND -o "${DIR_LOG}/${TIME_STAMP}_create_fragmentdb_${NAME}.log" --open-mode append --wrap="cd ${DIR_DATA}; rm \`cat ${NAME}_list.txt\` ; rm ${NAME}_list.txt"
+sbatch -n 1 --job-name=DBrem_${NAME} $DEPEND $(sq --node) -o "${DIR_LOG}/${TIME_STAMP}_create_fragmentdb_${NAME}.log" --open-mode append --wrap="cd ${DIR_DATA}; rm \`cat ${NAME}_list.txt\` ; rm ${NAME}_list.txt"
 
 
 ### register to fragment.db
-sbatch -N 1 -n 1 --exclusive=user --job-name=DBreg_${NAME} $DEPEND -o "${DIR_LOG}/${TIME_STAMP}_create_fragmentdb_${NAME}.log" --open-mode append --wrap="cd ${DIR_DATA}; ${DIR_LIB}/Register_filteredReads.pl -i ${NAME}_dataForFragDb.txt -o ${NAME}_fragment.db"
+sbatch -N 1 -n 1 --job-name=DBreg_${NAME} $DEPEND $(sq --node) -o "${DIR_LOG}/${TIME_STAMP}_create_fragmentdb_${NAME}.log" --open-mode append --wrap="cd ${DIR_DATA}; perl ${DIR_LIB}/Register_filteredReads.pl -i ${NAME}_dataForFragDb.txt -o ${NAME}_fragment.db"
 
 
 
@@ -302,7 +302,7 @@ sbatch -N 1 -n 1 --exclusive=user --job-name=DBreg_${NAME} $DEPEND -o "${DIR_LOG
 JOB_ID=($(squeue -o "%j %F" -u htanizawa | grep -e "DBreg_${NAME}" | cut -f2 -d' ' | xargs))
 JOB_ID_string=$(IFS=:; echo "${JOB_ID[*]}")
 DEPEND=""; [ -n "$JOB_ID_string" ] && DEPEND="--dependency=afterok:${JOB_ID_string}"
-sbatch -n 1 --job-name=distance_${NAME} $DEPEND -o "${DIR_LOG}/${TIME_STAMP}_distanceCurve_${NAME}.log" --open-mode append --wrap="cd ${DIR_DATA}; [ ! -e ${NAME}_distance.txt ] &&  perl ${DIR_LIB}/Create_distanceNormalize_data.pl -i ${NAME}_fragment.db -l ${FILE_CHROME_LENGTH} -o ${NAME}_distance.txt;"
+sbatch -n 1 --job-name=distance_${NAME} $DEPEND $(sq --node) -o "${DIR_LOG}/${TIME_STAMP}_distanceCurve_${NAME}.log" --open-mode append --wrap="cd ${DIR_DATA}; [ ! -e ${NAME}_distance.txt ] &&  perl ${DIR_LIB}/Create_distanceNormalize_data.pl -i ${NAME}_fragment.db -l ${FILE_CHROME_LENGTH} -o ${NAME}_distance.txt;"
 
 
 
@@ -315,7 +315,7 @@ sbatch -n 1 --job-name=distance_${NAME} $DEPEND -o "${DIR_LOG}/${TIME_STAMP}_dis
 JOB_ID=($(squeue -o "%j %F" -u htanizawa | grep -e "db_${NAME}" | cut -f2 -d' ' | xargs))
 JOB_ID_string=$(IFS=:; echo "${JOB_ID[*]}")
 DEPEND=""; [ -n "$JOB_ID_string" ] && DEPEND="--dependency=afterok:${JOB_ID_string}"
-sbatch -n 1 --job-name=DNA_${NAME} $DEPEND -o "${DIR_LOG}/${TIME_STAMP}_DNA_amount_${NAME}.log" --open-mode append --wrap="cd ${DIR_DATA}; perl ${DIR_LIB}/Count_DNA_amount.pl -i ${NAME}.db -o ${NAME}_DNA_amount.bed"
+sbatch -n 1 --job-name=DNA_${NAME} $DEPEND $(sq --node) -o "${DIR_LOG}/${TIME_STAMP}_DNA_amount_${NAME}.log" --open-mode append --wrap="cd ${DIR_DATA}; perl ${DIR_LIB}/Count_DNA_amount.pl -i ${NAME}.db -o ${NAME}_DNA_amount.bed"
 
 
 
@@ -325,7 +325,7 @@ sbatch -n 1 --job-name=DNA_${NAME} $DEPEND -o "${DIR_LOG}/${TIME_STAMP}_DNA_amou
 JOB_ID=($(squeue -o "%j %F" -u htanizawa | grep -e "DBreg_${NAME}" | cut -f2 -d' ' | xargs))
 JOB_ID_string=$(IFS=:; echo "${JOB_ID[*]}")
 DEPEND=""; [ -n "$JOB_ID_string" ] && DEPEND="--dependency=afterok:${JOB_ID_string}"
-sbatch -n 1 --job-name=fragmentpro_${NAME} ${DEPEND} -o "${DIR_LOG}/${TIME_STAMP}_fragment_property_${NAME}.log" --open-mode append --wrap="cd ${DIR_DATA}; perl ${DIR_LIB}/Fragment_property.pl -i ${NAME}_fragment.db > ${NAME}_fragment.txt"
+sbatch -n 1 --job-name=fragmentpro_${NAME} ${DEPEND} $(sq --node) -o "${DIR_LOG}/${TIME_STAMP}_fragment_property_${NAME}.log" --open-mode append --wrap="cd ${DIR_DATA}; perl ${DIR_LIB}/Fragment_property.pl -i ${NAME}_fragment.db > ${NAME}_fragment.txt"
 
 
 
@@ -335,7 +335,7 @@ sbatch -n 1 --job-name=fragmentpro_${NAME} ${DEPEND} -o "${DIR_LOG}/${TIME_STAMP
 JOB_ID=($(squeue -o "%j %F" -u htanizawa | grep -e "fragmentpro_${NAME}" | cut -f2 -d' ' | xargs))
 JOB_ID_string=$(IFS=:; echo "${JOB_ID[*]}")
 DEPEND=""; [ -n "$JOB_ID_string" ] && DEPEND="--dependency=afterok:${JOB_ID_string}"
-sbatch -n 1 --job-name=badFragment_${NAME} ${DEPEND} -o "${DIR_LOG}/${TIME_STAMP}_define_bad_fragment_${NAME}.log" --open-mode append --wrap="Rscript --vanilla --slave ${DIR_LIB}/Define_bad_fragment_threshold.R -i ${DIR_DATA}/${NAME}_fragment.txt --png ${DIR_DATA}/${NAME}_fragment.png -o ${DIR_DATA}/${NAME}_bad_fragment.txt --name ${NAME}"
+sbatch -n 1 --job-name=badFragment_${NAME} ${DEPEND} $(sq --node) -o "${DIR_LOG}/${TIME_STAMP}_define_bad_fragment_${NAME}.log" --open-mode append --wrap="Rscript --vanilla --slave ${DIR_LIB}/Define_bad_fragment_threshold.R -i ${DIR_DATA}/${NAME}_fragment.txt --png ${DIR_DATA}/${NAME}_fragment.png -o ${DIR_DATA}/${NAME}_bad_fragment.txt --name ${NAME}"
 
 
 
@@ -348,5 +348,5 @@ fi
 JOB_ID=($(squeue -o "%j %F" -u htanizawa | grep -e "badFragment_${NAME}" | cut -f2 -d' ' | xargs))
 JOB_ID_string=$(IFS=:; echo "${JOB_ID[*]}")
 DEPEND=""; [ -n "$JOB_ID_string" ] && DEPEND="--dependency=afterok:${JOB_ID_string}"
-sbatch -n 1 --job-name=Inter_${NAME} $DEPEND -o "${DIR_LOG}/${TIME_STAMP}_InterChromosome_${NAME}.log" --open-mode append --wrap="cd ${DIR_DATA}; perl ${DIR_LIB}/Make_association_from_fragmentdb_interChromosome.pl -i ${NAME}_fragment.db -o ${NAME}/InterChromosome.matrix -b ${NAME}_bad_fragment.txt"
+sbatch -n 1 --job-name=Inter_${NAME} $DEPEND $(sq --node) -o "${DIR_LOG}/${TIME_STAMP}_InterChromosome_${NAME}.log" --open-mode append --wrap="cd ${DIR_DATA}; perl ${DIR_LIB}/Make_association_from_fragmentdb_interChromosome.pl -i ${NAME}_fragment.db -o ${NAME}/InterChromosome.matrix -b ${NAME}_bad_fragment.txt"
 
