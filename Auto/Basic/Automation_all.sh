@@ -265,7 +265,7 @@ sbatch -n 1 --job-name=count_${NAME} $DEPEND $(sq --node) -o "${DIR_LOG}/${TIME_
 # 制限酵素部位ではなく、制限酵素断片のIDに直す(場所がLの場合はIDを１つ減らす）
 # 10kb以内の距離で、向きが異なるペアについては除去する
 # 染色体を１００に分割し、左の断片の中心位置のbinを基準に異なるファイルに出力する。出力したファイルのリストを<NAME>_list.txtとして出力する
-sbatch -n 1 --job-name=DBsp_${NAME} $DEPEND -o "${DIR_LOG}/${TIME_STAMP}_create_fragmentdb_${NAME}.log" --open-mode append --wrap="cd ${DIR_DATA}; perl ${DIR_LIB}/Split_database.pl -i ${NAME}.db -l ${CHROM_LENGTH} $(sq --node) -o ${NAME}_list.txt -m ${MAPQ_THRESHOLD} -e ${FILE_enzyme_def}"
+sbatch -n 1 --job-name=DBsp_${NAME} $DEPEND $(sq --node) -o "${DIR_LOG}/${TIME_STAMP}_create_fragmentdb_${NAME}.log" --open-mode append --wrap="cd ${DIR_DATA}; perl ${DIR_LIB}/Split_database.pl -i ${NAME}.db -l ${CHROM_LENGTH} -o ${NAME}_list.txt -m ${MAPQ_THRESHOLD} -e ${FILE_enzyme_def}"
 
 
 ### count duplicated number
