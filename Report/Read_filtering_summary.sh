@@ -79,7 +79,8 @@ for NAME in "$@"
 do
 	FILE_map=$(ls -t *make_map_${NAME}.log | head -n1)
 	FILE_count=$(ls -t *count_${NAME}.log | head -n1)
-	FILE_resolution=$(ls -t *HiCmap_resolution_${NAME}.log | head -n1)
+	FILE_resolution=/dev/null
+	[ -e *HiCmap_resolution_${NAME}.log ] && FILE_resolution=$(ls -t *HiCmap_resolution_${NAME}.log | head -n1)
 
 	if [ $FLAG -eq 0 ]
 	then
