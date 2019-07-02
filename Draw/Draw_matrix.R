@@ -4,12 +4,12 @@ suppressPackageStartupMessages(library("optparse"))
 option_list <- list(  
   make_option(c("-i", "--in"),help="matrix file"),
   make_option(c("-o", "--out"),help="output png file"),
+  make_option(c("--format"), default="rds", help="input file format (default: rds)"),
   make_option(c("--chr"),help="chromosome name all for all chromosome"),
   make_option(c("--distance"), default="FALSE", help="normalized by distance curve"),
   make_option(c("--blank"), default="20", help="blank bin number between chromosomes"),
   make_option(c("--normalize"), default="NA", help="NA, average: average will be 1, probability: score were divided by total read"),
   make_option(c("--moving_average"), default=0, help="number of merging bin for moving average calculation"),
-  make_option(c("--refresh"), default="FALSE", help="FALSE: use existing map object if eixts"),
   make_option(c("--na"), default="NA", help="how to treat na value. min, na, ave, zero. min replace with minimum value. ave take average of same distance, zero replace to zero"),
   make_option(c("--zero"), default="NA", help="how to treat 0 value. min, na, ave. min replace with minimum value. ave take average of same distance"),
   make_option(c("--matrix"), default="NULL", help="output matrix"),
@@ -75,16 +75,22 @@ Transform <- function(mat){
 }
 
 
-Flag_refresh <- eval(parse(text=as.character(opt["refresh"])))
 FLAG_cairo <- eval(parse(text=as.character(opt["cairo"])))
 
+FILE_format <- as.character(opt["format"])
 FILE_matrix <- as.character(opt["in"])
-FILE_object <- sub(".matrix", ".rds", FILE_matrix)
-if(!file.exists(FILE_object) || Flag_refresh){
+if(FILE_format == "rds"){
+  FILE_object <- sub(".matrix", ".rds", FILE_matrix)
+  if(!file.exists(FILE_object)){
+    map <- as.matrix(read.table(FILE_matrix, header=TRUE, check.names = FALSE))
+  }else{
+    map <- readRDS(FILE_object)
+  }
+}else if(FILE_format == "matrix"){
   map <- as.matrix(read.table(FILE_matrix, header=TRUE, check.names = FALSE))
-  # saveRDS(map, FILE_object)
 }else{
-  map <- readRDS(FILE_object)
+  cat("Unknown input file format")
+  q()
 }
 map <- ifelse(is.infinite(map), NA, map)
 
