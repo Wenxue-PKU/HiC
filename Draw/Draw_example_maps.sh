@@ -7,14 +7,18 @@ get_usage(){
 Usage : $0 [OPTION] [target sample name(s). separated by space]
 
 Format of location file should have following columns, 
-1. resolution
-2. chr
-3. start
-4. end
-optional field is 
-5. moving_average
-6. name (use for region name)
-7. linev and lineh (line location for map)
+1. chr1
+2. start1
+3. end1
+optional field are
+4. chr2
+5. start2
+6. end2
+7. resolution (if different from global resolution)
+8. moving_average
+9. name (region name)
+10. linev (line location for map)
+11. lineh (line location for map)
 File should be deliminated by tab. Order is flexible and okay to have extrac columns but should have header as described in above.
 
 Description
@@ -23,7 +27,13 @@ Description
 
 	-i, --in [location file]
 		file defined location of drawing. File format is as described in above
-	
+
+	-r, --resolution [resolution]
+		resolution of Hi-C map. (ex. 10kb). If each map need different resolution, write in location file.
+
+	-t, --type [map type ex (ICE2)]
+		data map type Raw/ICE/ICE2. default (ICE)
+
 	-o, --out [output directory]
 		output directory
 
@@ -39,8 +49,8 @@ EOF
 
 }
 
-SHORT=hvi:o:d:c:
-LONG=help,version,in:,out:,data:,color:,circles:
+SHORT=hvi:r:t:o:d:c:
+LONG=help,version,in:,resolution:,type:,out:,data:,color:,circles:,
 PARSED=`getopt --options $SHORT --longoptions $LONG --name "$0" -- "$@"`
 if [[ $? -ne 0 ]]; then
 	exit 2
@@ -59,6 +69,14 @@ while true; do
 			;;
 		-i|--in)
 			FILE_location="$2"
+			shift 2
+			;;
+		-r|--resolution)
+			RESOLUTION="$2"
+			shift 2
+			;;
+		-t|--type)
+			MAP_TYPE="$2"
 			shift 2
 			;;
 		-o|--out)
@@ -98,13 +116,13 @@ TIME_STAMP=$(date +"%Y-%m-%d")
 [ $# -lt 1 ] && echo "Please specify target Hi-C sample name(s)" && exit 1
 [ ! -e "${FILE_location}" ] && echo "Location file is not exists" && exit 1
 FILE_circles=${FILE_circles:-"NULL"}
+RESOLUTION=${RESOLUTION:-"NA"}
+MAP_TYPE=${MAP_TYPE:-"ICE"}
 
 SAMPLES=$@
 
 
 ### Check optional field
-FLAG_moving_average=$(cat ${FILE_location} | head -n1 | grep -c moving_average)
-FLAG_name=$(cat ${FILE_location} | head -n1 | grep -c name)
 FLAG_lineh=$(cat ${FILE_location} | head -n1 | grep -c lineh)
 FLAG_linev=$(cat ${FILE_location} | head -n1 | grep -c linev)
 
@@ -113,53 +131,18 @@ FLAG_linev=$(cat ${FILE_location} | head -n1 | grep -c linev)
 #==============================================================
 DB_loc=${FILE_location/.txt/.db}
 [ ! -e ${DB_loc} ] && file2database.R -i ${FILE_location} --id TRUE --db ${DB_loc} --table loc
-
+NUM_data=$(cat $FILE_location | wc -l)
 
 #==============================================================
 # Drawing HiC map 
 #==============================================================
 [ ! -e ${DIR_OUT}/img ] && mkdir ${DIR_OUT}/img
-[ ! -e ${DIR_OUT}/log ] && mkdir ${DIR_OUT}/log
-for id in $(sqlite3 ${DB_loc} "select id from loc")
+
+i=0
+for NAME in $SAMPLES
 do
-	RESOLUTION=$(sqlite3 ${DB_loc} "select resolution from loc where id='${id}'")
-	CHR=$(sqlite3 ${DB_loc} "select chr from loc where id='${id}'")
-	START=$(sqlite3 ${DB_loc} "select start from loc where id='${id}'")
-	END=$(sqlite3 ${DB_loc} "select end from loc where id='${id}'")
-
-	if [ $FLAG_moving_average -eq 0 ]; then
-		MOVING_AVERAGE=0
-	else
-		MOVING_AVERAGE=$(sqlite3 ${DB_loc} "select moving_average from loc where id='${id}'")
-	fi
-
-	if [ $FLAG_lineh -eq 0 ]; then
-		DRAW_LINE_H=""
-	else
-		DRAW_LINE_H="--lineh_chr ${CHR} --lineh_pos $(sqlite3 ${DB_loc} "select lineh from loc where id='${id}'")"
-	fi
-
-	if [ $FLAG_linev -eq 0 ]; then
-		DRAW_LINE_V=""
-	else
-		DRAW_LINE_V="--linev_chr ${CHR} --linev_pos $(sqlite3 ${DB_loc} "select linev from loc where id='${id}'")"
-	fi	
-
-
-	i=0
-	for NAME in $SAMPLES
-	do
-		COL=${COLORS[$i]}
-		let i=${i}+1
-		[ ! -e ${DIR_OUT}/img/${id}_${NAME}_hic2.png ] && sbatch -n 4 --job-name=${id}_${NAME}_hic $(sq --node) -o "${DIR_OUT}/log/${TIME_STAMP}_map_for_${id}_${NAME}.log" --open-mode append --wrap="Rscript --vanilla --slave ${DIR_LIB}/Draw_matrix.R -i ${DIR_DATA}/${NAME}/${RESOLUTION}/ICE/${CHR}.rds --normalize NA --zero NA --na na --moving_average ${MOVING_AVERAGE} --chr ${CHR} --start ${START} --end ${END} --unit p --max 0.95 --color $COL --width 800 -o ${DIR_OUT}/img/${id}_${NAME}_hic1.png --circle $FILE_circles $DRAW_LINE_H $DRAW_LINE_V && convert -rotate -45 -crop 1134x300-167+100 -resize 800x ${DIR_OUT}/img/${id}_${NAME}_hic1.png ${DIR_OUT}/img/${id}_${NAME}_hic2.png"
-
-		# sbatch -n 4 --job-name=${id}_${NAME}_tad $(sq --node) -o "${DIR_OUT}/log/${TIME_STAMP}_tad_for_${id}_${NAME}.log" --open-mode append --wrap="Rscript --vanilla --slave ${DIR_LIB}/Draw_borderStrength.R -i ${DIR_DATA}/${NAME}/${RESOLUTION}/ICE/${CHR}.rds --chr ${CHR} --start ${START} --end ${END} --width 800 --height 50 --out ${DIR_OUT}/img/${id}_${NAME}_tad.png"
-
-		# sbatch -n 4 --job-name=${id}_${NAME}_comp $(sq --node) -o "${DIR_OUT}/log/${TIME_STAMP}_comp_for_${id}_${NAME}.log" --open-mode append --wrap="Rscript --vanilla --slave ${DIR_LIB}/Draw_PCAscore_from_location.R -i ${DIR_DATA}/${NAME}/Compartment_40kb.txt --chr ${CHR} --start ${START} --end ${END} --fill TRUE --out ${DIR_OUT}/img/${id}_${NAME}_comp.png --ymin \" -60\" --ymax 40 --width 800 --height 150 --line \" -20\""
-	done
-
-	#==============================================================
-	# axis
-	#==============================================================
-	[ ! -e ${DIR_OUT}/img/${id}_axis.png ] && sbatch -n 1 --job-name=gh_${id}_axis $(sq --node) -o "${DIR_OUT}/log/${TIME_STAMP}_axis_for_${id}_${CHR}_${START}_${END}.log" --open-mode append --wrap="Rscript --vanilla --slave ${DIR_LIB}/Draw_axis.R --chr ${CHR} --start ${START} --end ${END} --width 800 --out ${DIR_OUT}/img/${id}_axis.png"
+	COL=${COLORS[$i]}
+	let i=${i}+1
+	sbatch -N 2 -n 4 --array=1-${NUM_data} --job-name=dr_${NAME} $(sq --node) -o "${DIR_OUT}/drawing_map_for_${NAME}.log" --export=NAME="${NAME}",DIR_DATA="${DIR_DATA}",DIR_OUT="${DIR_OUT}",DB_loc="${DB_loc}",FLAG_lineh="${FLAG_lineh}",FLAG_linev="${FLAG_linev}",RESOLUTION="${RESOLUTION}",COL="${COL}",MAP_TYPE="${MAP_TYPE}",DIR_LIB="${DIR_LIB}",FILE_circles="${FILE_circles}" --open-mode append ${DIR_LIB}/lib/Drawing_individual_map.sh
 done
+
