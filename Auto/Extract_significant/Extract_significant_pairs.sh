@@ -36,7 +36,13 @@ Description
 	
 	--FDR [FDR value]
 		FDR cut off. (default is 0.01)
-	
+
+	--local [local fc threshold]
+		local fc threshold. (default is 4)
+
+	--fc [fold-change threhold to background]
+		fold-change threshold to same distance background. (default is 4)
+
 	--remove_tmp [TRUE|FALSE]
 		remove temporary directory(TRUE) or not(FALSE). (Default is TRUE)
 EOF
@@ -48,7 +54,7 @@ get_version(){
 }
 
 SHORT=hvn:r:d:o:x:
-LONG=help,version,name:,resolution:,max:,data:,out:,organism:,control:,FDR:,remove_tmp:
+LONG=help,version,name:,resolution:,max:,data:,out:,organism:,control:,FDR:,local:,fc:,remove_tmp:
 PARSED=`getopt --options $SHORT --longoptions $LONG --name "$0" -- "$@"`
 if [[ $? -ne 0 ]]; then
 	exit 2
@@ -97,6 +103,14 @@ while true; do
 			FDR="$2"
 			shift 2
 			;;
+		--local)
+			T_LOCAL="$2"
+			shift 2
+			;;
+		--fc)
+			T_fc="$2"
+			shift 2
+			;;
 		--remove_tmp)
 			FLAG_remove_tmp="$2"
 			shift 2
@@ -124,6 +138,8 @@ MAX_distance=${MAX_distance/Mb/000000}
 MAX_distance=${MAX_distance/kb/000}
 T_CONTROL=${T_CONTROL:-1}
 FDR=${FDR:-0.01}
+T_LOCAL=${T_CONTROL:-4}
+T_fc=${T_fc:-4}
 RESOLUTION=${RESOLUTION:-10kb}
 FLAG_remove_tmp=${FLAG_remove_tmp:-TRUE}
 
@@ -144,20 +160,20 @@ FILE_log=${FILE_OUT/.txt/.log}
 #==============================================================
 for CHR in $CHRs
 do
-	FILE_in=${DIR_DATA}/${NAME}/${RESOLUTION}/ICE2/${CHR}.rds
-	sbatch -n 4 --job-name=si_${UNIQ_ID}_${CHR} -o "${DIR_tmp}/log/define_significant_pairs_${CHR}.log" --open-mode append --wrap="Rscript --vanilla --slave ${DIR_LIB}/Define_all_significant_pairs.R -i ${FILE_in} -o ${DIR_tmp}/scores/${CHR}.txt --max ${MAX_distance} --control $T_CONTROL --FDR $FDR"
+	FILE_in=${DIR_DATA}/${NAME}/${RESOLUTION}/ICE/${CHR}.rds
+	sbatch -n 4 -N 2 --job-name=si_${UNIQ_ID}_${CHR} $(sq --node) -o "${DIR_tmp}/log/define_significant_pairs_${CHR}.log" --open-mode append --wrap="Rscript --vanilla --slave ${DIR_LIB}/Define_all_significant_pairs.R -i ${FILE_in} -o ${DIR_tmp}/scores/${CHR}.txt --max ${MAX_distance} --control $T_CONTROL --FDR $FDR --local $T_LOCAL --fc $T_fc"
 done
 
 ### 結果をまとめてFDRでソートする
 JOB_ID=($(squeue -o "%j %F" -u htanizawa | grep -e "si_${UNIQ_ID}" | cut -f2 -d' ' | xargs))
 JOB_ID_string=$(IFS=:; echo "${JOB_ID[*]}")
 DEPEND=""; [ -n "$JOB_ID_string" ] && DEPEND="--dependency=afterok:${JOB_ID_string}"
-sbatch -n 1 --job-name=si2_${UNIQ_ID} $DEPEND -o "${FILE_log}" --open-mode append <<-EOF
+sbatch -n 1 --job-name=si2_${UNIQ_ID} $DEPEND $(sq --node) -o "${FILE_log}" --open-mode append <<-EOF
 #!/bin/sh
 cd ${DIR_tmp}/scores
 cat chr1.txt | head -n1 > $FILE_OUT
 ls chr*.txt | xargs -n1 | xargs -n1 -I@ sh -c "cat \@ | tail -n+2" | sort -k12,12g >> $FILE_OUT
-ls ${DIR_tmp}/log/define_significant_pairs_*.log | xargs -n1 | xargs -n1 -I@ sh -c "cat @ | cut -d':' -f2 | tr -d ' ' | xargs" | awk -v OFS='\t' 'BEGIN{Nsig=0; Nfirst=0; Nall=0}{Nsig+=\$6; Nfirst+=\$3; Nall+=\$1}END{print "Total combinations: "Nall; print "Total first filtered: "Nfirst; print "Total significant: "Nsig;}'
+ls ${DIR_tmp}/log/define_significant_pairs_*.log | xargs -n1 | xargs -n1 -I@ sh -c "cat @ | cut -d':' -f2 | tr -d ' ' | xargs" | awk -v OFS='\t' -v FDR=$FDR -v con=$T_CONTROL -v fc=$T_fc 'BEGIN{N1=0; N2=0; N3=0; N4=0; N5=0; N6=0}{N1+=\$1; N2+=\$2; N3+=\$3; N4+=\$4; N5+=\$5; N6+=\$6; N7+=\$7;}END{print "Total target: "N1; print "FDR < "FDR": "N2; print "Fold-change > "fc": "N3; print "Control > "con": "N4; print "Surround area check: "N5; print "After 1st filtering: "N6; print "After scan surrounded area: "N7;}'
 [ "$FLAG_remove_tmp" = "TRUE" ] && rm -rf ${DIR_tmp}
 EOF
 

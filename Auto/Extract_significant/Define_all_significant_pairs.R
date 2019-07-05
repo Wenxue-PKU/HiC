@@ -9,6 +9,8 @@ option_list <- list(
   make_option(c("--min"), default="20000", help="minimum distance to check(default : 20kb)"),
   make_option(c("--max"), default="2000000", help="maximum distance to check (default : 2Mb)"),
   make_option(c("--control"), default=1, help="minimum required average read for control region"),
+  make_option(c("--local"), default=4, help="local enrichment"),
+  make_option(c("--fc"), default=4, help="fc threshold to background"),
   make_option(c("--FDR"), default=0.01, help="threshold of FDR"),
   make_option(c("--surround_check"), default="TRUE", help="use surround area check (default: TRUE)")
 )
@@ -17,19 +19,14 @@ opt <- parse_args(OptionParser(option_list=option_list))
 suppressWarnings(suppressMessages(library(dplyr)))
 
 
-#=============================================
-# test data
-#=============================================
-FILE_matrix <- "X:/hideki_projects/416_20181226_HiC_tempera_EBV/data/EBV_LCL_olap_b2/5kb_1kbslide/ICE2/EBV.rds"
-T_max <- 2000000
-T_min <- 5000
-
 
 FILE_out <- as.character(opt["out"])
 FILE_matrix <- as.character(opt["in"])
 T_max <- as.numeric(as.character(opt["max"]))
 T_min <- as.numeric(as.character(opt["min"]))
 T_control <- as.numeric(as.character(opt["control"]))
+T_local <- as.numeric(as.character(opt["local"]))
+T_fc <- as.numeric(as.character(opt["fc"]))
 FDR <- as.numeric(as.character(opt["FDR"]))
 
 
@@ -103,21 +100,25 @@ checkSurrounded <- function(i,j){
     return(0)
   }
   
-  ### 90% 以上がスコアで埋まっている
-  if((sum(!is.na(sss_all)) / length(sss_all)) < 0.90){
+  ### 95% 以上がスコアで埋まっている
+  if(sum(!is.na(sss_all) / length(sss_all)) < 0.95){
     return(0)
   }
   
   ### centerは少なくとも3つ以上欠けていてはダメ
-  if(sum(is.na(sss_center)) > 3){
+  if(sum(is.na(sss_center)) > 2){
     return(0)
   }
   
-  ### 周りの3x3のどのタイルよりも中心3x3のスコアの方が高い
+  ### 周りの3x3のどのタイルよりも中心3x3のスコアの方がlocal ratio以上高い
   sss_center_ave <- mean(sss_center, na.rm = TRUE)
   for(bb in 1:9){
     index_surrounded <- cbind(mask_surround[[as.character(bb)]][,1]+i-SEARCH_AREA, mask_surround[[as.character(bb)]][,2]+j-SEARCH_AREA)
-    if(mean(as.numeric(map[index_surrounded]), na.rm = TRUE) > sss_center_ave){
+    average_surrounded <- mean(as.numeric(map[index_surrounded]), na.rm = TRUE)
+    if(is.na(average_surrounded)){
+      return(0)
+    }
+    if(average_surrounded * T_local > sss_center_ave){
       return(0)
     }
   }
@@ -152,27 +153,28 @@ for(d in MIN_NUM:MAX_NUM){
     distance <- d*Sliding_window
     Pvalues <- pnorm(scores, mean=Average, sd=sd(scores_back), lower.tail = FALSE)
     df <- data.frame(id1=index1, id2=index2, distance=distance, score=scores, control=Average, 
-                     fc=log2(scores/Average), pval=Pvalues, okay=Okay, stringsAsFactors = FALSE)
+                     fc=scores/Average, pval=Pvalues, okay=Okay, stringsAsFactors = FALSE)
     df <- df %>% filter(!is.na(Pvalues))
     D_table <- rbind(D_table, df)
   }
 }
 rm(df, index1, index2, index3, Okay, scores, Pvalues)
 
-cat(paste("Total target: ", D_table %>% nrow(), "\n"))
+cat(paste0("Total target: ", D_table %>% nrow(), "\n"))
 D_table <- D_table %>% mutate(qval=p.adjust(pval, method = "BH")) %>% filter(qval < FDR)
-cat(paste("FDR < ", FDR, ": ", D_table %>% nrow(), "\n"))
-
+cat(paste0("FDR < ", FDR, ": ", D_table %>% nrow(), "\n"))
+D_table <- D_table %>% filter(fc > T_fc)
+cat(paste0("Fold-change > ", T_fc, ": ", D_table %>% nrow(), "\n"))
 D_table <- D_table %>% filter(control >= T_control)
-cat(paste("Control > ", T_control, ": ", D_table %>% nrow(), "\n"))
+cat(paste0("Control > ", T_control, ": ", D_table %>% nrow(), "\n"))
 
 ### 周りのmatrixによるスコアと、control >= 1でもfiltering
 if(as.character(opt["surround_check"]) == "TRUE"){
   D_table <- D_table %>% filter(okay == 1)
-  cat(paste("Surround area check: ", D_table %>% nrow(), "\n"))
+  cat(paste0("Surround area check: ", D_table %>% nrow(), "\n"))
 }
 D_table <- D_table %>% select(-okay)
-cat(paste("After 1st filterings: ", D_table %>% nrow(), "\n"))
+cat(paste0("After 1st filterings: ", D_table %>% nrow(), "\n"))
 
 
 #=============================================
