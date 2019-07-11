@@ -27,6 +27,15 @@ Description
 	--VERBOSE [true/false]
 		information during optimization printed out
 	
+	--INTRA_IF_THRESHOLD [80%]
+		Intra-chromosome pairs less than this threshold become non-contacts
+	
+	--INTER_IF_THRESHOLD [18%]
+		Inter-chromosome pairs less than this threshold become non-contacts
+	
+	--MAX_ITERATION [20000]
+		Maximum iteration
+	
 	--W3_inter [0.5]
 		NEG_MAX_DIST
 
@@ -47,7 +56,7 @@ get_version(){
 }
 
 SHORT=hi:d:
-LONG=help,in:,matrix:,dir:,NBR_OF_CHR:,VERBOSE:,W3_inter:,W3_intra:,W4_inter:,W4_intra:
+LONG=help,in:,matrix:,dir:,NBR_OF_CHR:,VERBOSE:,INTRA_IF_THRESHOLD:,INTER_IF_THRESHOLD:,MAX_ITERATION:,W3_inter:,W3_intra:,W4_inter:,W4_intra:
 PARSED=`getopt --options $SHORT --longoptions $LONG --name "$0" -- "$@"`
 if [ $? -ne 0 ]; then
 	exit 2
@@ -78,6 +87,18 @@ while true; do
 			;;
 		--VERBOSE)
 			VERBOSE="$2"
+			shift 2
+			;;
+		--INTRA_IF_THRESHOLD)
+			INTRA_IF_THRESHOLD="$2"
+			shift 2
+			;;
+		--INTER_IF_THRESHOLD)
+			INTER_IF_THRESHOLD="$2"
+			shift 2
+			;;
+		--MAX_ITERATION)
+			MAX_ITERATION="$2"
 			shift 2
 			;;
 		--W3_inter)
@@ -119,6 +140,9 @@ W3_inter=${W3_inter:-0.5}
 W3_intra=${W3_intra:-5.0}
 W4_inter=${W4_inter:-0.5}
 W4_intra=${W4_intra:-5.0}
+MAX_ITERATION=${MAX_ITERATION:-20000}
+INTRA_IF_THRESHOLD=${INTRA_IF_THRESHOLD:-"80%"}
+INTER_IF_THRESHOLD=${INTER_IF_THRESHOLD:-"18%"}
 
 [ ! -e ${DIR_OUT}/output ] && mkdir ${DIR_OUT}/output
 [ ! -e ${DIR_OUT}/input ] && mkdir ${DIR_OUT}/input
@@ -134,39 +158,36 @@ W4_intra=${W4_intra:-5.0}
 #==============================================================
 # make setting file
 #==============================================================
+# もし、複数のchromosomeが有る場合、最初のパラメータはinter-chromosomeになる。
+# singleの場合には、intraになる。
+
 cat<<EOF > ${DIR_OUT}/input/pos_max_dist_weight.txt
-#the first coefficient is for all (chr1,chr2) where chr1 != chr2
 1.0
-#coefficients for intrachromosomal contacts of chromosomes
 EOF
 
 cat<<EOF > ${DIR_OUT}/input/pos_min_dist_weight.txt
-#the first coefficient is for all (chr1,chr2) where chr1 != chr2
 2.0
-#coefficients for intrachromosomal contacts of chromosomes
 EOF
 
 ### W3
 cat<<EOF > ${DIR_OUT}/input/neg_max_dist_weight.txt
-#the first coefficient is for all (chr1,chr2) where chr1 != chr2
 $W3_inter
-#coefficients for intrachromosomal contacts of chromosomes
 EOF
 
 ### W4
 cat<<EOF > ${DIR_OUT}/input/neg_min_dist_weight.txt
-#the first coefficient is for all (chr1,chr2) where chr1 != chr2
 $W4_inter
-#coefficients for intrachromosomal contacts of chromosomes
 EOF
 
-for i in $(seq 1 $NBR_OF_CHR)
-do
-	echo "$i 1.0" >> ${DIR_OUT}/input/pos_max_dist_weight.txt
-	echo "$i 4.0" >> ${DIR_OUT}/input/pos_min_dist_weight.txt
-	echo "$i $W3_intra" >> ${DIR_OUT}/input/neg_max_dist_weight.txt
-	echo "$i $W4_intra" >> ${DIR_OUT}/input/neg_min_dist_weight.txt
-done
+if [ "$NBR_OF_CHR" -gt 1 ]; then
+	for i in $(seq 1 $NBR_OF_CHR)
+	do
+		echo "$i 1.0" >> ${DIR_OUT}/input/pos_max_dist_weight.txt
+		echo "$i 4.0" >> ${DIR_OUT}/input/pos_min_dist_weight.txt
+		echo "$i $W3_intra" >> ${DIR_OUT}/input/neg_max_dist_weight.txt
+		echo "$i $W4_intra" >> ${DIR_OUT}/input/neg_min_dist_weight.txt
+	done
+fi
 
 
 cat<<EOF > ${DIR_OUT}/input/parameter.txt
@@ -182,10 +203,17 @@ CHR_UPPER_BOUND_ID_FILE = ${DIR_OUT}/input/${NAME_in}_break_point.txt
 
 #contact with interaction frequency less than this is considered as non-contact, 
 
-#INTRA_IF_THRESHOLD = 0.65
-INTRA_IF_THRESHOLD = 80%
-#INTER_IF_THRESHOLD = 0.58
-INTER_IF_THRESHOLD = 18%
+INTRA_IF_THRESHOLD = ${INTRA_IF_THRESHOLD}
+EOF
+
+### multi chromosome option
+if [ "$NBR_OF_CHR" -gt 1 ]; then
+	cat<<-EOF >> ${DIR_OUT}/input/parameter.txt
+	INTER_IF_THRESHOLD = $INTER_IF_THRESHOLD
+	EOF
+fi
+
+cat<<EOF >> ${DIR_OUT}/input/parameter.txt
 
 #NOTICE: the following distances are in square
 #maximum distance between 2 adjacent points
@@ -217,7 +245,7 @@ VERBOSE = ${VERBOSE}
 #if the program fails to generate structures, or the distance between 2 consecutive points are too large, try to reduce this learning rate
 LEARNING_RATE = 0.001
 #during parameter adjustment, increase LEARNING_RATE and decrease MAX_ITERATION, so that "coarse" structures can be quickly generated
-MAX_ITERATION = 20000
+MAX_ITERATION = ${MAX_ITERATION}
 EOF
 
 
@@ -226,4 +254,5 @@ EOF
 #==============================================================
 cd ${DIR_OUT}
 java -jar ${MOGEN_root}/bin/3DGenerator.jar ${DIR_OUT}/input/parameter.txt
+
 

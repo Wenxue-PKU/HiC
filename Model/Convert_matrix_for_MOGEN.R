@@ -5,6 +5,7 @@ suppressPackageStartupMessages(library("optparse"))
 option_list <- list(  
   make_option(c("-i", "--in"),help="matrix file"),
   make_option(c("-o", "--out"),help="output interaction data file name"),
+  make_option(c("--fill"), default="NA", help="fill blank score to this ratio value (ex. 0.5 means top 50% score) "),
   make_option(c("--break_point"), default="NA", help="file name which output breakpoint of chromosomes")
 )
 opt <- parse_args(OptionParser(option_list=option_list))
@@ -40,7 +41,14 @@ colnames(map)[1] <- "origin"
 map <- map %>% tidyr::gather(key="target", value="score", -origin)
 map$target <- as.integer(map$target)
 map <- map %>% filter(origin < target)
-map <- map %>% filter(score != 0)
+
+NUM_FILL <- as.character(opt["fill"])
+if(NUM_FILL == "NA"){
+  map <- map %>% filter(score != 0)
+}else{
+  T <- quantile(map$score,prob=1-as.numeric(NUM_FILL))
+  map <- map %>% mutate(ifelse(score == 0, T, score))
+}
 map <- map %>% arrange(origin, target)
 
 write.table(map, FILE_out, sep = "\t", row.names = FALSE, col.names = FALSE, quote = FALSE)
