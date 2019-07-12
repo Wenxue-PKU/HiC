@@ -21,6 +21,7 @@ option_list <- list(
   make_option(c("--color"), default="matlab", help="color matlab or gentle, blue or red"),
   make_option(c("--unit"), default="v", help="unit to define score threshold p:percent or v:value"),
   make_option(c("--blur"), default=FALSE, help="if TRUE, make blur image"),
+  make_option(c("--gaus_smooth"), default=FALSE, help="apply gaussian smoothing"),
   make_option(c("--corScore"), default=FALSE, help="if TRUE, calculate correlation score"),
   make_option(c("--linerColor"), default=FALSE, help="use linear color scale"),
   make_option(c("--min"), default="NULL", help="minimum score for drawing"),
@@ -156,14 +157,6 @@ if(eval(parse(text=as.character(opt["distance"])))){
 }
 
 
-# blur image
-if(eval(parse(text=opt["blur"]))){
-  suppressWarnings(suppressMessages(library("spatstat")))
-  t <- blur(as.im(map), sigma=.6, bleed=FALSE)
-  map <- t$v
-  rm(t)
-}
-
 
 CHR <- as.character(opt["chr"])
 START <- as.numeric(as.character(opt["start"]))
@@ -215,7 +208,42 @@ if(CHR=="all"){
   map.extract <- map[Region, Region2]
 }
 
+# blur image
+if(eval(parse(text=opt["blur"]))){
+  suppressWarnings(suppressMessages(library("spatstat")))
+  c1 <- colnames(map.extract)
+  c2 <- rownames(map.extract)
+  t <- blur(as.im(map.extract), sigma=.6, bleed=FALSE)
+  map.extract <- t$v
+  rm(t)
+  colnames(map.extract) <- c1
+  rownames(map.extract) <- c2
+}
 
+# Gaussian smoothing
+if(eval(parse(text=opt["gaus_smooth"]))){
+  ### weight matrices for Gaussian smoothing
+  gause_weight <- data.frame(
+    V1 = c(1, 4, 7, 4, 1),
+    V2 = c(4, 16, 26, 16, 4),
+    V3 = c(7, 26, 41, 26, 7),
+    V4 = c(4, 16, 26, 16, 4),
+    V5 = c(1, 4, 7, 4, 1)
+  )
+  gause_weight <- as.matrix(gause_weight)
+  gause_index <- which(gause_weight>0, arr.ind = TRUE)
+  
+  map_new <- map.extract
+  map_new[,] <- 0
+  for (i in 3:(nrow(map.extract)-2)){
+    for (j in 3:(nrow(map.extract)-2)){
+      map_index <- cbind(gause_index[,1] + i - 3, gause_index[,2] + j - 3)
+      map_new[map_index] <- map_new[map_index] + map.extract[i,j] * gause_weight / 273
+    }
+  }
+  map.extract <- map_new
+  rm(map_new)
+}
 
 # moving average
 N_moving_average <- as.numeric(as.character(opt["moving_average"]))
