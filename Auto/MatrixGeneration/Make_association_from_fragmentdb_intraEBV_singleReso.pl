@@ -46,9 +46,9 @@ while(my $ref = $sth_data->fetchrow_arrayref()){
 	my $middle2 = ($start2 + $end2) / 2;
 	my $distance = abs($middle1 - $middle2);
 
-	# 20kb以内の距離だった場合には、scoreを２倍にする
-	# (20kb以内については、同じ向きのデータしか無いから)
-	if($distance < 20000){
+	# 10kb以内の距離だった場合には、scoreを２倍にする
+	# (10kb以内については、同じ向きのデータしか無いから)
+	if($distance < 10000){
 		$score = $score * 2;
 	}
 

@@ -85,7 +85,7 @@ rm(Location)
 saveRDS(map, FILE_object)
 write.table(map, FILE_matrix, sep = "\t", row.names = TRUE, col.names = NA, quote = FALSE)
 
-file.remove(FILE_tmp)
+dummy <- file.remove(FILE_tmp)
 
 
 
