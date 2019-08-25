@@ -118,6 +118,10 @@ case $ORGANISM in
 			case $RESTRICTION in 
 				MboI)	FILE_enzyme_index=/wistar/bioinfo-nfs/hideki_projects/Genome/data/pombe/2018/Sectioning_MboI.txt
 						FILE_enzyme_def=/wistar/bioinfo-nfs/hideki_projects/Genome/data/pombe/2018/MboI_sites.txt ;;
+				MboI-Hinf1)	FILE_enzyme_index=/wistar/bioinfo-nfs/hideki_projects/Genome/data/pombe/2018/Sectioning_MboI-Hinf1.txt
+							FILE_enzyme_def=/wistar/bioinfo-nfs/hideki_projects/Genome/data/pombe/2018/MboI-Hinf1_sites.txt ;;
+				MboI-Hinf1-MluCl)	FILE_enzyme_index=/wistar/bioinfo-nfs/hideki_projects/Genome/data/pombe/2018/Sectioning_MboI-Hinf1-MluCl.txt
+									FILE_enzyme_def=/wistar/bioinfo-nfs/hideki_projects/Genome/data/pombe/2018/MboI-Hinf1-MluCl_sites.txt ;;
 				*)	echo "$RESTRICTION is not registered for $ORGANISM"
 					exit ;;
 			esac
