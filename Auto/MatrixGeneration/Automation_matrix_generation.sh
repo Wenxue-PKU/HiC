@@ -29,6 +29,7 @@ while true; do
 		-r|--resolution)
 			RESOLUTION_string="$2"
 			RESOLUTION=${RESOLUTION_string/kb/000}
+			RESOLUTION=${RESOLUTION_string/bp/}
 			shift 2
 			;;
 		-o|--log)
