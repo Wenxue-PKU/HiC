@@ -29,7 +29,7 @@ while true; do
 		-r|--resolution)
 			RESOLUTION_string="$2"
 			RESOLUTION=${RESOLUTION_string/kb/000}
-			RESOLUTION=${RESOLUTION_string/bp/}
+			RESOLUTION=${RESOLUTION/bp/}
 			shift 2
 			;;
 		-o|--log)
@@ -133,9 +133,9 @@ if [ $FLAG_RAW = "TRUE" ]; then
 	JOB_ID_string=$(IFS=:; echo "${JOB_ID[*]}")
 	DEPEND=""; [ -n "$JOB_ID_string" ] && DEPEND="--dependency=afterok:${JOB_ID_string}"
 	if [ "$FLAG_blacklist" = "TRUE" ] && [ -e ${DIR_DATA}/${NAME}_bad_fragment.txt ]; then
-		sbatch -N 2 -n 6 --job-name=RAW_${NAME}_${RESOLUTION_string} $DEPEND $(sq --node) -o ${FILE_LOG} --open-mode append --wrap="cd ${DIR_DATA}; perl $PRO_RAW_matrix -i ${NAME}_fragment.db -o ${NAME}/${RESOLUTION_string}/Raw/  -r ${RESOLUTION} -b ${NAME}_bad_fragment.txt"
+		sbatch -N 3 -n 12 --job-name=RAW_${NAME}_${RESOLUTION_string} $DEPEND $(sq --node) -o ${FILE_LOG} --open-mode append --wrap="cd ${DIR_DATA}; perl $PRO_RAW_matrix -i ${NAME}_fragment.db -o ${NAME}/${RESOLUTION_string}/Raw/  -r ${RESOLUTION} -b ${NAME}_bad_fragment.txt"
 	else
-		sbatch -N 2 -n 6  --job-name=RAW_${NAME}_${RESOLUTION_string} $DEPEND $(sq --node) -o ${FILE_LOG} --open-mode append --wrap="cd ${DIR_DATA}; perl $PRO_RAW_matrix -i ${NAME}_fragment.db -o ${NAME}/${RESOLUTION_string}/Raw/  -r ${RESOLUTION}"
+		sbatch -N 3 -n 12  --job-name=RAW_${NAME}_${RESOLUTION_string} $DEPEND $(sq --node) -o ${FILE_LOG} --open-mode append --wrap="cd ${DIR_DATA}; perl $PRO_RAW_matrix -i ${NAME}_fragment.db -o ${NAME}/${RESOLUTION_string}/Raw/  -r ${RESOLUTION}"
 	fi
 
 
