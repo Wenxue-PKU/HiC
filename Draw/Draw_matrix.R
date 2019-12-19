@@ -33,8 +33,7 @@ option_list <- list(
   make_option(c("--lineh_chr"), default="NULL", help="location of horizontal line"),
   make_option(c("--lineh_pos"), default="NULL", help="location of horizontal line , separated"),
   make_option(c("--circle"), default="NULL", help="location pairs to draw circles on output"),
-  make_option(c("--triangle"), default="FALSE", help="plot only half of triangle"),
-  make_option(c("--cairo"), default="TRUE", help="use cairo for output")
+  make_option(c("--triangle"), default="FALSE", help="plot only half of triangle")
 )
 opt <- parse_args(OptionParser(option_list=option_list))
 
@@ -75,8 +74,6 @@ Transform <- function(mat){
   mat.rev
 }
 
-
-FLAG_cairo <- eval(parse(text=as.character(opt["cairo"])))
 
 FILE_format <- as.character(opt["format"])
 FILE_matrix <- as.character(opt["in"])
@@ -402,19 +399,8 @@ colors <- colors[min(map.cat, na.rm=TRUE):max(map.cat, na.rm=TRUE)]
 
 
 
-
-  
-
-
-
 FILE_OUT <- as.character(opt["out"])
-if(FLAG_cairo){
-  suppressWarnings(suppressMessages(library(Cairo)))
-  CairoPNG(FILE_OUT, width=width, height=height, units="px", bg="white")
-}else{
-  png(file=FILE_OUT, width=width, height=height, units="px", bg="white")
-}
-
+png(file=FILE_OUT, width=width, height=height, units="px", bg="white")
 par(oma=c(0,0,0,0), mar=c(0,0,0,0))
 image(Transform(map.cat), col=colors, axes=F)
 
