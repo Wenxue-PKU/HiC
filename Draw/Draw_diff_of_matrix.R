@@ -1,5 +1,4 @@
 # diff of contact matrixを計算する
-# .libPaths(.libPaths()[c(2,3,1)])
 suppressWarnings(suppressMessages(library("spatstat")))
 
 suppressPackageStartupMessages(library("optparse"))
@@ -9,6 +8,7 @@ option_list <- list(
   make_option(c("-o", "--out"),default="NULL",help="output png file"),
   make_option(c("--matrix"), default="NULL", help="output matrix"),
   make_option(c("--adjust"), default=TRUE, help="adjust total read of file2 to file1"),
+  make_option(c("--extract_first"), default=FALSE, help="In default, entire chromosome were considered for adjusting. With this option, Extract target area first then normalize"),
   make_option(c("--normalize"), default=TRUE, help="normaliz map score"),
   make_option(c("--blur"), default=TRUE, help="output png with blur"),
   make_option(c("--sigma"), default=".5", help="sigma value of Blur"),
@@ -28,12 +28,10 @@ option_list <- list(
   make_option(c("--lineh_chr"), default="NULL", help="location of horizontal line , separated"),
   make_option(c("--lineh_pos"), default="NULL", help="location of horizontal line , separated"),
   make_option(c("--color"), default="gentle", help="gentle or blight"),
-  make_option(c("--circle"), default="NULL", help="location pairs to draw circles on output"),
-  make_option(c("--cairo"), default="TRUE", help="use cairo for output")
+  make_option(c("--circle"), default="NULL", help="location pairs to draw circles on output")
 )
 opt <- parse_args(OptionParser(option_list=option_list))
 
-FLAG_cairo <- eval(parse(text=as.character(opt["cairo"])))
 FILE_matrix1 <- as.character(opt["file1"])
 FILE_matrix2 <- as.character(opt["file2"])
 FILE_object1 <- sub("matrix", "rds", FILE_matrix1)
@@ -52,7 +50,6 @@ LocList <- strsplit(r1, ":")
 LocMatrix <- matrix(unlist(LocList), ncol=3, byrow=TRUE)
 
 map1 <- ifelse(is.infinite(map1), NA, map1)
-TotalRead <- sum(map1, na.rm=TRUE)
 
 
 #=========================================================
@@ -99,8 +96,21 @@ if(!file.exists(FILE_object2)){
 }
 map2 <- ifelse(is.infinite(map2), NA, map2)
 
+
+### 先に領域を絞る
+if(eval(parse(text=opt["extract_first"]))){
+  map1 <- map1[Region, Region2]
+  r2 <- rownames(map2)
+  Region <- intersect(rownames(map1), r2)
+  Region2 <- intersect(colnames(map1), r2)
+  map2 <- map2[Region, Region2]
+  map1 <- map1[Region, Region2]
+}
+
+
 # map2の合計値をmap1の合計値と同じになるように調整する
 if(eval(parse(text=opt["adjust"]))){
+  TotalRead <- sum(map1, na.rm=TRUE)
   map2 <- map2 / sum(map2, na.rm=TRUE) * TotalRead
 }
 
@@ -112,14 +122,15 @@ if(eval(parse(text=opt["normalize"]))){
 }
 
 
-# 領域を絞る
-map1 <- map1[Region, Region2]
-r2 <- rownames(map2)
-Region <- intersect(rownames(map1), r2)
-Region2 <- intersect(colnames(map1), r2)
-map2 <- map2[Region, Region2]
-map1 <- map1[Region, Region2]
-
+# 領域を絞る（通常の順序)
+if(!eval(parse(text=opt["extract_first"]))){
+  map1 <- map1[Region, Region2]
+  r2 <- rownames(map2)
+  Region <- intersect(rownames(map1), r2)
+  Region2 <- intersect(colnames(map1), r2)
+  map2 <- map2[Region, Region2]
+  map1 <- map1[Region, Region2]
+}
 
 
 #=========================================================
@@ -219,13 +230,7 @@ Transform <- function(mat){
 
 
 if(as.character(opt["out"]) != "NULL"){
-  
-  if(FLAG_cairo){
-    suppressWarnings(suppressMessages(library(Cairo)))
-    CairoPNG(as.character(opt["out"]), width=width, height=height, units="px", bg="white")
-  }else{
-    png(file=as.character(opt["out"]), width=width, height=height, units="px", bg="white")
-  }
+  png(file=as.character(opt["out"]), width=width, height=height, units="px", bg="white")
   par(oma=c(0,0,0,0), mar=c(0,0,0,0))
   image(Transform(mat.diff), col=colors, axes=F)
   
@@ -258,9 +263,6 @@ if(as.character(opt["out"]) != "NULL"){
   }
   dummy <- dev.off()
 }
-
-
-
 
 
 
