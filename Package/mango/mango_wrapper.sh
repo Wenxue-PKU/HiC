@@ -30,7 +30,9 @@ Description
 	
 	--chrominclude [include chromosome.]
 		chromosome list separated by commma,
-	
+
+	--maxDistance [maximim distance between pairs]
+		maximum distance between pairs (default: 1000000)
 EOF
 
 }
@@ -40,7 +42,7 @@ get_version(){
 }
 
 SHORT=hvd:o:n:x:
-LONG=help,version,out:,name:,ref:,fastq1:,fastq2:,chrominclude:
+LONG=help,version,out:,name:,ref:,fastq1:,fastq2:,chrominclude:,maxDistance:
 PARSED=`getopt --options $SHORT --longoptions $LONG --name "$0" -- "$@"`
 if [[ $? -ne 0 ]]; then
 	exit 2
@@ -81,6 +83,10 @@ while true; do
 			CHROM_INCLUDE="$2"
 			shift 2
 			;;
+		--maxDistance)
+			MAX_DISTANCE="$2"
+			shift 2
+			;;
 		--)
 			shift
 			break
@@ -102,6 +108,7 @@ INPUT_FILES=$@
 [ ! -n "${FILE_fastq2}" ] && echo "Please specify input fastq2 file" && exit 1
 [ ! -n "${REF}" ] && echo "Please specify ref" && exit 1
 CHROM_INCLUDE=${CHROM_INCLUDE:-NULL}
+MAX_DISTANCE=${MAX_DISTANCE:-1000000}
 
 #-----------------------------------------------
 # Load setting
@@ -122,7 +129,7 @@ ln -s ${FILE_fastq2} ${NAME}_2.same.fastq
 
 
 ### Mango
-Rscript --vanilla --slave ${HOME}/Software/mango/mango.R --fastq1 ${FILE_fastq1} --fastq2 ${FILE_fastq2} --prefix ${NAME} --chrominclude ${CHROM_INCLUDE} --bedtoolsgenome $FILE_CHROME_LENGTH --stages 2:5 --outdir ${DIR_tmp} --bowtieref $BOWTIE_INDEX --keepempty TRUE
+Rscript --vanilla --slave ${HOME}/Software/mango/mango.R --fastq1 ${FILE_fastq1} --fastq2 ${FILE_fastq2} --prefix ${NAME} --chrominclude ${CHROM_INCLUDE} --bedtoolsgenome $FILE_CHROME_LENGTH --stages 2:5 --outdir ${DIR_tmp} --bowtieref $BOWTIE_INDEX --keepempty TRUE --reportallpairs TRUE --maxinteractingdist $MAX_DISTANCE
 
 
 rm ${NAME}_?.same.fastq
