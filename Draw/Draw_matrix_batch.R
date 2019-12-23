@@ -13,7 +13,7 @@ option_list <- list(
   make_option(c("--moving_average"), default=0, help="number of merging bin for moving average calculation"),
   make_option(c("--na"), default="NA", help="how to treat na value. min, na, ave, zero. min replace with minimum value. ave take average of same distance, zero replace to zero"),
   make_option(c("--zero"), default="NA", help="how to treat 0 value. min, na, ave. min replace with minimum value. ave take average of same distance"),
-  make_option(c("--matrix"), default=FALSE, help="output matrix (TURE) or not (FALSE)"),
+  make_option(c("--matrix"), default="NULL", help="directory for output matrix. NULL for not output"),
   make_option(c("--color"), default="matlab", help="color matlab or gentle, blue or red"),
   make_option(c("--unit"), default="v", help="unit to define score threshold p:percent or v:value"),
   make_option(c("--min"), default="NULL", help="minimum score for drawing"),
@@ -84,8 +84,6 @@ if(!("chr2" %in% colnames(D_location))){
   D_location[,"end2"] = D_location[,"end1"]
 }
 
-FLAG_matrix <- eval(parse(text=as.character(opt["matrix"])))
-
 checkDIRpath <- function(DIR){
   if(substring(DIR, nchar(DIR), nchar(DIR)) != "/"){
     DIR <- paste0(DIR, "/")
@@ -94,7 +92,7 @@ checkDIRpath <- function(DIR){
 }
 DIR_in <- checkDIRpath(as.character(opt["in"]))
 DIR_out <- checkDIRpath(as.character(opt["out"]))
-
+DIR_matrix <- checkDIRpath(as.character(opt["matrix"]))
 
 
 for(cc in D_location %>% distinct(chr1) %>% pull(chr1) %>% as.character()){
@@ -240,8 +238,8 @@ for(cc in D_location %>% distinct(chr1) %>% pull(chr1) %>% as.character()){
       }
     }
     
-    if(FLAG_matrix){
-      write.table(map.extract, file=paste0(DIR_out, NAME, ".matrix"), quote=FALSE, sep="\t", eol="\n", row.names=TRUE, col.names=NA)
+    if(DIR_matrix != "NULL/"){
+      write.table(map.extract, file=paste0(DIR_matrix, NAME, ".matrix"), quote=FALSE, sep="\t", eol="\n", row.names=TRUE, col.names=NA)
     }
     
     map.conv <- TakeMiddleV(map.extract, Min, Max)
