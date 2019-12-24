@@ -12,12 +12,6 @@ Description
 
 	-v, --version
 		show version
-	
-	-n, --name
-		sample name
-
-	-r, --resolution [resolution (ex. 10kb)]
-		resolution (default 10kb)
 
 	--max [max distance (ex. 2Mb)]
 		default is 2Mb
@@ -25,8 +19,8 @@ Description
 	-d, --data [directory]
 		data directory
 	
-	-o, --out [output file]
-		output file
+	-o, --out [output directory]
+		output directory
 	
 	-x, --organism [human|mouse]
 		organism name
@@ -42,6 +36,9 @@ Description
 
 	--fc [fold-change threhold to background]
 		fold-change threshold to same distance background. (default is 4)
+	
+	--background [threshold for background]
+		background average of surrounded -200kb, +200kb area (default 4)
 
 	--remove_tmp [TRUE|FALSE]
 		remove temporary directory(TRUE) or not(FALSE). (Default is TRUE)
@@ -53,8 +50,8 @@ get_version(){
 	echo "${0} version 1.0"
 }
 
-SHORT=hvn:r:d:o:x:
-LONG=help,version,name:,resolution:,max:,data:,out:,organism:,control:,FDR:,local:,fc:,remove_tmp:
+SHORT=hvd:o:x:
+LONG=help,version,max:,data:,out:,organism:,control:,FDR:,local:,fc:,background:,remove_tmp:
 PARSED=`getopt --options $SHORT --longoptions $LONG --name "$0" -- "$@"`
 if [[ $? -ne 0 ]]; then
 	exit 2
@@ -71,14 +68,6 @@ while true; do
 			get_version
 			exit 1
 			;;
-		-n|--name)
-			NAME="$2"
-			shift 2
-			;;
-		-r|--resolution)
-			RESOLUTION="$2"
-			shift 2
-			;;
 		--max)
 			MAX_distance="$2"
 			shift 2
@@ -88,7 +77,7 @@ while true; do
 			shift 2
 			;;
 		-o|--out)
-			FILE_OUT="$2"
+			DIR_OUT="$2"
 			shift 2
 			;;
 		-x|--organism)
@@ -111,6 +100,10 @@ while true; do
 			T_fc="$2"
 			shift 2
 			;;
+		--background)
+			T_back="$2"
+			shift 2
+			;;
 		--remove_tmp)
 			FLAG_remove_tmp="$2"
 			shift 2
@@ -129,9 +122,8 @@ done
 DIR_LIB=$(dirname $0)
 TIME_STAMP=$(date +"%Y-%m-%d")
 
-[ ! -n "${NAME}" ] && echo "Please specify NAME" && exit 1
 [ ! -n "${DIR_DATA}" ] && echo "Please specify data directory" && exit 1
-[ ! -n "${FILE_OUT}" ] && echo "Please specify output file" && exit 1
+[ ! -n "${DIR_OUT}" ] && echo "Please specify output directory" && exit 1
 [ ! -n "${ORGANISM}" ] && echo "Please specify organism" && exit 1
 MAX_distance=${MAX_distance:-"2Mb"}
 MAX_distance=${MAX_distance/Mb/000000}
@@ -140,7 +132,7 @@ T_CONTROL=${T_CONTROL:-1}
 FDR=${FDR:-0.01}
 T_LOCAL=${T_CONTROL:-4}
 T_fc=${T_fc:-4}
-RESOLUTION=${RESOLUTION:-10kb}
+T_back=${T_back:-4}
 FLAG_remove_tmp=${FLAG_remove_tmp:-TRUE}
 
 case $ORGANISM in
@@ -150,31 +142,29 @@ case $ORGANISM in
 	       eixt 1 ;;
 esac
 
-DIR_tmp=${FILE_OUT}_tmpDir
-[ ! -e ${DIR_tmp} ] && mkdir ${DIR_tmp} && mkdir ${DIR_tmp}/log ${DIR_tmp}/scores
-UNIQ_ID=$(echo $FILE_OUT | rev | cut -c 1-20 | rev)
-FILE_log=${FILE_OUT/.txt/.log}
+[ ! -e ${DIR_OUT} ] && mkdir ${DIR_OUT}
+[ ! -e ${DIR_OUT}/log ] && mkdir ${DIR_OUT}/log
+[ ! -e ${DIR_OUT}/scores ] && mkdir ${DIR_OUT}/scores
+UNIQ_ID=$(echo $DIR_OUT | rev | cut -c 1-20 | rev)
 
 #==============================================================
 # Significant fragment pairsを定義
 #==============================================================
 for CHR in $CHRs
 do
-	FILE_in=${DIR_DATA}/${NAME}/${RESOLUTION}/ICE/${CHR}.rds
-	sbatch -n 4 -N 2 --job-name=si_${UNIQ_ID}_${CHR} $(sq --node) -o "${DIR_tmp}/log/define_significant_pairs_${CHR}.log" --open-mode append --wrap="Rscript --vanilla --slave ${DIR_LIB}/Define_all_significant_pairs.R -i ${FILE_in} -o ${DIR_tmp}/scores/${CHR}.txt --max ${MAX_distance} --control $T_CONTROL --FDR $FDR --local $T_LOCAL --fc $T_fc"
+	sbatch --account=nomalab -n 1 -N 1 --job-name=si_${UNIQ_ID}_${CHR} --mem=40G $(sq --node --partition short) -o "${DIR_OUT}/log/define_significant_pairs_${CHR}.log" --open-mode append --wrap="Rscript --vanilla --slave ${DIR_LIB}/Define_all_significant_pairs.R -i ${DIR_DATA}/${CHR}.rds -o ${DIR_OUT}/scores/${CHR}_sig.txt --all ${DIR_OUT}/scores/${CHR}_all.txt --max ${MAX_distance} --control $T_CONTROL --FDR $FDR --local $T_LOCAL --fc $T_fc --background $T_back"
 done
 
-### 結果をまとめてFDRでソートする
-JOB_ID=($(squeue -o "%j %F" -u htanizawa | grep -e "si_${UNIQ_ID}" | cut -f2 -d' ' | xargs))
+### 結果をまとめてlocal fold-changeでソートする
+JOB_ID=($(squeue -o "%j %F" -u hidekit | grep -e "si_${UNIQ_ID}" | cut -f2 -d' ' | xargs))
 JOB_ID_string=$(IFS=:; echo "${JOB_ID[*]}")
 DEPEND=""; [ -n "$JOB_ID_string" ] && DEPEND="--dependency=afterok:${JOB_ID_string}"
-sbatch -n 1 --job-name=si2_${UNIQ_ID} $DEPEND $(sq --node) -o "${FILE_log}" --open-mode append <<-EOF
+sbatch --account=nomalab -n 1 --job-name=si2_${UNIQ_ID} $DEPEND --mem=40G $(sq --node --partition short) -o "${DIR_OUT}/merge.log" --open-mode append <<-EOF
 #!/bin/sh
-cd ${DIR_tmp}/scores
-cat chr1.txt | head -n1 > $FILE_OUT
-ls chr*.txt | xargs -n1 | xargs -n1 -I@ sh -c "cat \@ | tail -n+2" | sort -k12,12g >> $FILE_OUT
-ls ${DIR_tmp}/log/define_significant_pairs_*.log | xargs -n1 | xargs -n1 -I@ sh -c "cat @ | cut -d':' -f2 | tr -d ' ' | xargs" | awk -v OFS='\t' -v FDR=$FDR -v con=$T_CONTROL -v fc=$T_fc 'BEGIN{N1=0; N2=0; N3=0; N4=0; N5=0; N6=0}{N1+=\$1; N2+=\$2; N3+=\$3; N4+=\$4; N5+=\$5; N6+=\$6; N7+=\$7;}END{print "Total target: "N1; print "FDR < "FDR": "N2; print "Fold-change > "fc": "N3; print "Control > "con": "N4; print "Surround area check: "N5; print "After 1st filtering: "N6; print "After scan surrounded area: "N7;}'
-[ "$FLAG_remove_tmp" = "TRUE" ] && rm -rf ${DIR_tmp}
+cd ${DIR_OUT}/scores
+cat chr1_sig.txt | head -n1 > ${DIR_OUT}/significant.txt
+ls chr*_sig.txt | xargs -n1 | xargs -n1 -I@ sh -c "cat \@ | tail -n+2" | sort -k13,13r >> ${DIR_OUT}/significant.txt
+[ "$FLAG_remove_tmp" = "TRUE" ] && rm -rf ${DIR_OUT}/scores && rm -rf ${DIR_OUT}/log
 EOF
 
 
