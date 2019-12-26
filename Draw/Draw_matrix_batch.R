@@ -21,7 +21,8 @@ option_list <- list(
   make_option(c("--width"), default="NULL", help="width of output figure"),
   make_option(c("--height"), default="NULL", help="height of output figure"),
   make_option(c("--linerColor"), default=FALSE, help="use linear color scale"),
-  make_option(c("--triangle"), default="FALSE", help="plot only half of triangle")
+  make_option(c("--triangle"), default="FALSE", help="plot only half of triangle"),
+  make_option(c("--circle"), default="NULL", help="location pairs to draw circles on output")
 )
 opt <- parse_args(OptionParser(option_list=option_list))
 
@@ -77,7 +78,25 @@ lseq <- function(from=1, to=100000, length.out=6) {
 ### location file
 # chr1, start1, end1, chr2, start2, end2, name
 FILE_location <- as.character(opt["location"])
-D_location <- fread(FILE_location)
+D_location <- fread(FILE_location, header = TRUE)
+if(!"chr1" %in% colnames(D_location)){
+  cat("chr1 should be specified")
+  q()
+}
+if(!"start1" %in% colnames(D_location)){
+  cat("start1 should be specified")
+  q()
+}
+if(!"end1" %in% colnames(D_location)){
+  cat("end1 should be specified")
+  q()
+}
+draw_range <- min(D_location %>% mutate(area=end1-start1) %>% pull(area))
+if(draw_range < 20000){
+  cat("Some of the draw range are too small:", draw_range)
+  q()
+}
+
 if(!("chr2" %in% colnames(D_location))){
   D_location[,"chr2"] = D_location[,"chr1"]
   D_location[,"start2"] = D_location[,"start1"]
@@ -94,6 +113,10 @@ DIR_in <- checkDIRpath(as.character(opt["in"]))
 DIR_out <- checkDIRpath(as.character(opt["out"]))
 DIR_matrix <- checkDIRpath(as.character(opt["matrix"]))
 
+FILE_circle <- as.character(opt["circle"])
+if(FILE_circle != "NULL"){
+  D_circle <- read.table(as.character(opt["circle"]), header=F, sep="\t", check.names = F)
+}
 
 for(cc in D_location %>% distinct(chr1) %>% pull(chr1) %>% as.character()){
   map <- readRDS(paste0(DIR_in, cc, ".rds"))
@@ -284,6 +307,19 @@ for(cc in D_location %>% distinct(chr1) %>% pull(chr1) %>% as.character()){
     png(file=FILE_OUT, width=width, height=height, units="px", bg="white")
     par(oma=c(0,0,0,0), mar=c(0,0,0,0))
     image(Transform(map.cat), col=colors, axes=F)
+    
+    ### Circle
+    if(FILE_circle != "NULL"){
+      nc <- colnames(map.extract)
+      nr <- rownames(map.extract)
+      OK_pair <- D_circle[,1] %in% nr & D_circle[,2] %in% nc
+      D_circle_sub <- D_circle[OK_pair,]
+      for(i in 1:nrow(D_circle_sub)){
+        par(new=T)
+        plot(which(D_circle_sub[i,1] == nr), nrow(map.extract) - which(D_circle_sub[i,2] == nc)+1, pch=21, xlim=c(1,ncol(map.extract)), 
+             ylim=c(1,nrow(map.extract)), xaxs="i", yaxs="i", cex=2, axes=F, col='black', lwd=2.5)
+      }
+    }
     dummy <- dev.off()
   }
   
