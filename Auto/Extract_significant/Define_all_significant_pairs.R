@@ -83,6 +83,7 @@ SHIFT_TO_CENTER <- (nrow(mask)-1)/2 + 1
 
 mask_all <- which(mask > -20, arr.ind = TRUE) - SHIFT_TO_CENTER
 mask_center <- which(mask < -9, arr.ind = TRUE) - SHIFT_TO_CENTER
+mask_closeArea <- which(mask != 0, arr.ind = TRUE) - SHIFT_TO_CENTER
 mask_surround <- list()
 for(bb in 1:9){
   mask_surround[[as.character(bb)]] <- which(mask==bb, arr.ind = TRUE) - SHIFT_TO_CENTER
@@ -91,16 +92,18 @@ checkLocalFc <- function(i,j){
   ### 中心をずらす
   index_all <- cbind(mask_all[,1]+i, mask_all[,2]+j)
   index_center <- cbind(mask_center[,1]+i, mask_center[,2]+j)
+  index_closeArea <- cbind(mask_closeArea[,1]+i, mask_closeArea[,2]+j)
   sss_all <- as.numeric(map[index_all])
   sss_center <- as.numeric(map[index_center])
+  sss_closeArea <- as.numeric(map[index_closeArea])
   
   ### 中心はNAでない
   if(is.na(map[i,j])){
     return(0)
   }
   
-  ### NAは３つ以下
-  if(sum(is.na(sss_all)) > 2){
+  ### 合計15x15=255のうち、NAは1行+5% (=12)未満 (<27)
+  if(sum(is.na(sss_all)) > 27){
     return(0)
   }
   
@@ -117,7 +120,14 @@ checkLocalFc <- function(i,j){
   fc <- c()
   for(bb in 1:9){
     index_surrounded <- cbind(mask_surround[[as.character(bb)]][,1]+i, mask_surround[[as.character(bb)]][,2]+j)
-    average_surrounded <- mean(as.numeric(map[index_surrounded]), na.rm = TRUE)
+    sss_surrounded <- as.numeric(map[index_surrounded])
+    
+    ### 3x3のタイルのうち3個未満しかスコアがなかったらアウト
+    if(sum(!is.na(sss_surrounded)) < 3){
+      return(0)
+    }
+    
+    average_surrounded <- mean(sss_surrounded, na.rm = TRUE)
     if(average_surrounded == 0){
       fold_change <- sss_center_ave
     }else{
@@ -137,7 +147,7 @@ checkBackground <- function(i,j){
   y_min <- max(1, j-200000/Resolution)
   y_max <- min(NUM_LINE, j+200000/Resolution)
   score <- as.numeric(map[x_min:x_max, y_min:y_max])
-  if(!is.na(map[i,j])){
+  if(is.na(map[i,j])){
     back_s <- mean(score, na.rm = TRUE)
   }else{
     back_s <- (sum(score, na.rm = TRUE) - map[i,j])/ (length(score) - 1)
@@ -160,7 +170,7 @@ for(d in MIN_NUM:MAX_NUM){
   wrapper <- function(k){
     checkLocalFc(index3[k,1], index3[k,2])
   }
-  local_fc <- sapply(1:nrow(index3), wrapper)
+  local_foldchange <- sapply(1:nrow(index3), wrapper)
   
   ### background average
   wrapper2 <- function(k){
@@ -179,14 +189,15 @@ for(d in MIN_NUM:MAX_NUM){
     distance <- d*Sliding_window
     Pvalues <- pnorm(scores, mean=Average, sd=sd(scores_back), lower.tail = FALSE)
     df <- data.frame(id1=index1, id2=index2, distance=distance, score=scores, control=Average, 
-                     dis_fc=scores/Average, pval=Pvalues, local_fc=local_fc, back_ave=background_score, stringsAsFactors = FALSE)
+                     dis_fc=scores/Average, pval=Pvalues, local_fc=local_foldchange, back_ave=background_score, stringsAsFactors = FALSE)
     df <- df %>% filter(!is.na(Pvalues))
     D_table <- rbind(D_table, df)
   }
 }
-rm(df, index1, index2, index3, local_fc, background_score, scores, scores_back, distance, Pvalues, map)
+rm(df, index1, index2, index3, local_foldchange, background_score, scores, scores_back, distance, Pvalues, map)
 
 D_table <- D_table %>% mutate(qval=p.adjust(pval, method = "BH"))
+D_table <- D_table %>% filter(local_fc != 0)
 D_table <- dplyr::left_join(D_table, Location %>% rename(chr1=chr, start1=start, end1=end), by=c("id1"="id"))
 D_table <- dplyr::left_join(D_table, Location %>% rename(chr2=chr, start2=start, end2=end), by=c("id2"="id"))
 D_table <- D_table[,c("chr1", "start1", "end1", "chr2", "start2", "end2", "distance", "score", "control", "dis_fc", "pval", "qval", "local_fc", "back_ave")]

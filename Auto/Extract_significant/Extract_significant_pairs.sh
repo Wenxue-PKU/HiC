@@ -130,7 +130,7 @@ MAX_distance=${MAX_distance/Mb/000000}
 MAX_distance=${MAX_distance/kb/000}
 T_CONTROL=${T_CONTROL:-1}
 FDR=${FDR:-0.01}
-T_LOCAL=${T_CONTROL:-4}
+T_LOCAL=${T_LOCAL:-4}
 T_fc=${T_fc:-4}
 T_back=${T_back:-4}
 FLAG_remove_tmp=${FLAG_remove_tmp:-TRUE}
@@ -156,10 +156,11 @@ do
 done
 
 ### 結果をまとめてlocal fold-changeでソートする
+sleep 1
 JOB_ID=($(squeue -o "%j %F" -u hidekit | grep -e "si_${UNIQ_ID}" | cut -f2 -d' ' | xargs))
 JOB_ID_string=$(IFS=:; echo "${JOB_ID[*]}")
 DEPEND=""; [ -n "$JOB_ID_string" ] && DEPEND="--dependency=afterok:${JOB_ID_string}"
-sbatch --account=nomalab -n 1 --job-name=si2_${UNIQ_ID} $DEPEND --mem=40G $(sq --node --partition short) -o "${DIR_OUT}/merge.log" --open-mode append <<-EOF
+sbatch --account=nomalab -n 1 -N 1 --job-name=si2_${UNIQ_ID} $DEPEND --mem=40G $(sq --node --partition short) -o "${DIR_OUT}/merge.log" --open-mode append <<-EOF
 #!/bin/sh
 cd ${DIR_OUT}/scores
 cat chr1_sig.txt | head -n1 > ${DIR_OUT}/significant.txt

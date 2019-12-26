@@ -42,33 +42,36 @@ worksheet.set_column('A:B', 6.5)
 worksheet.set_column('C:D', 12)
 worksheet.set_column('E:E', 6.5)
 worksheet.set_column('F:H', 12)
-worksheet.set_column('I:I', 13.5)
+worksheet.set_column('I:I', 9.5)
 worksheet.set_column('J:L', 7.5)
 worksheet.set_column('M:N', 11)
+worksheet.set_column('O:O', 7.5)
+worksheet.set_column('P:P', 8.2)
 
-
-TITLE = ["rank", "chr1", "start1", "end1", "chr2", "start2", "end2", "distance", "map", "score", "control", "fc", "pval", "qval"]
+TITLE = ["rank", "chr1", "start1", "end1", "chr2", "start2", "end2", "distance", "map", "score", "control", "dis_fc", "pval", "qval", "local_fc", "back_ave"]
 worksheet.write_row(0, 0, TITLE, format_header)
 
 for i in range(0,len(DATA)):
 	row=i+1
-	worksheet.set_row(row, 70)
-	worksheet.write(row, 0, float(DATA.iloc[i, 0]), format_number)
-	worksheet.write(row, 1, unicode(DATA.iloc[i, 1], 'utf-8'), format_string)
-	worksheet.write(row, 2, float(DATA.iloc[i, 2]), format_number)
-	worksheet.write(row, 3, float(DATA.iloc[i, 3]), format_number)
-	worksheet.write(row, 4, unicode(DATA.iloc[i, 4], 'utf-8'), format_string)
-	worksheet.write(row, 5, float(DATA.iloc[i, 5]), format_number)
-	worksheet.write(row, 6, float(DATA.iloc[i, 6]), format_number)
-	worksheet.write(row, 7, float(DATA.iloc[i, 7]), format_number)
+	worksheet.set_row(row, 55)
+	worksheet.write(row, 0, row, format_number)
+	worksheet.write(row, 1, unicode(DATA.iloc[i, 0], 'utf-8'), format_string)
+	worksheet.write(row, 2, float(DATA.iloc[i, 1]), format_number)
+	worksheet.write(row, 3, float(DATA.iloc[i, 2]), format_number)
+	worksheet.write(row, 4, unicode(DATA.iloc[i, 3], 'utf-8'), format_string)
+	worksheet.write(row, 5, float(DATA.iloc[i, 4]), format_number)
+	worksheet.write(row, 6, float(DATA.iloc[i, 5]), format_number)
+	worksheet.write(row, 7, float(DATA.iloc[i, 6]), format_number)
  
-	FILE_image = DIR_image + "/rank_" + str(DATA.iloc[i, 0]) + ".png"
-	worksheet.insert_image(row,8, FILE_image, {'x_offset': 2, 'y_offset': 2, 'x_scale': .17, 'y_scale': .17})
+	FILE_image = DIR_image + "/" + str(row) + ".png"
+	worksheet.insert_image(row,8, FILE_image, {'x_offset': 2, 'y_offset': 2, 'x_scale': .68, 'y_scale': .68})
 
-	worksheet.write(row, 9, float(DATA.iloc[i, 8]), format_small)
-	worksheet.write(row, 10, float(DATA.iloc[i, 9]), format_small)
-	worksheet.write(row, 11, float(DATA.iloc[i, 10]), format_small)
-	worksheet.write(row, 12, float(DATA.iloc[i, 11]), format_pval)
-	worksheet.write(row, 13, float(DATA.iloc[i, 12]), format_pval)
+	worksheet.write(row, 9, float(DATA.iloc[i, 7]), format_small)
+	worksheet.write(row, 10, float(DATA.iloc[i, 8]), format_small)
+	worksheet.write(row, 11, float(DATA.iloc[i, 9]), format_small)
+	worksheet.write(row, 12, float(DATA.iloc[i, 10]), format_pval)
+	worksheet.write(row, 13, float(DATA.iloc[i, 11]), format_pval)
+	worksheet.write(row, 14, float(DATA.iloc[i, 12]), format_small)
+	worksheet.write(row, 15, float(DATA.iloc[i, 13]), format_small)
 
 workbook.close()
