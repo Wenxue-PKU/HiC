@@ -57,33 +57,50 @@ map1 <- ifelse(is.infinite(map1), NA, map1)
 #=========================================================
 CHR <- as.character(opt["chr"])
 START <- as.numeric(as.character(opt["start"]))
-if(as.character(opt["end"]) == "all"){
-  SameChromosome <- which(as.character(LocMatrix[,1]) == CHR)
-  END <- max(as.numeric(LocMatrix[SameChromosome,3]));
+if(CHR=="all"){
+  chromosomes <- unique(as.character(LocMatrix[,1]))
+  chromsome_length <- rep(0, length(chromosomes))
+  names(chromsome_length) <- chromosomes
+  for(c in chromosomes){
+    chromsome_length[c] <- max(as.numeric(LocMatrix[as.character(LocMatrix[,1]) == c,3]))
+  }
+  chromosomes.sort <- sort(chromsome_length, decreasing = TRUE)
+  Region <- c()
+  LINE_for_chromosome_border <- c()
+  for(c in names(chromosomes.sort)){
+    Region <- c(Region, r1[as.character(LocMatrix[,1]) == c])
+    LINE_for_chromosome_border <- c(LINE_for_chromosome_border, sum(as.character(LocMatrix[,1]) == c))
+  }
+  Region2 <- Region
 }else{
-  END <- as.numeric(as.character(opt["end"]))
+  if(as.character(opt["end"]) == "all"){
+    SameChromosome <- which(as.character(LocMatrix[,1]) == CHR)
+    END <- max(as.numeric(LocMatrix[SameChromosome,3]));
+  }else{
+    END <- as.numeric(as.character(opt["end"]))
+  }
+  Region <- which((as.character(LocMatrix[,1]) == CHR) & (as.numeric(LocMatrix[,2]) >= START) & (as.numeric(LocMatrix[,3]) <= END))
+  
+  if(as.character(opt["chr2"]) != "NULL"){
+    CHR2 <- as.character(opt["chr2"])
+  }else{
+    CHR2 <- CHR
+  }
+  if(as.character(opt["start2"]) != "NULL"){
+    START2 <- as.numeric(as.character(opt["start2"]))
+  }else{
+    START2 <- START
+  }
+  if(as.character(opt["end2"]) == "all"){
+    SameChromosome <- which(as.character(LocMatrix[,1]) == CHR2)
+    END2 <- max(as.numeric(LocMatrix[SameChromosome,3]));
+  }else if(as.character(opt["end2"]) != "NULL"){
+    END2 <- as.numeric(as.character(opt["end2"]))
+  }else{
+    END2 <- END
+  }
+  Region2 <- which((as.character(LocMatrix[,1]) == CHR2) & (as.numeric(LocMatrix[,2]) >= START2) & (as.numeric(LocMatrix[,3]) <= END2))
 }
-Region <- which((as.character(LocMatrix[,1]) == CHR) & (as.numeric(LocMatrix[,2]) >= START) & (as.numeric(LocMatrix[,3]) <= END))
-
-if(as.character(opt["chr2"]) != "NULL"){
-  CHR2 <- as.character(opt["chr2"])
-}else{
-  CHR2 <- CHR
-}
-if(as.character(opt["start2"]) != "NULL"){
-  START2 <- as.numeric(as.character(opt["start2"]))
-}else{
-  START2 <- START
-}
-if(as.character(opt["end2"]) == "all"){
-  SameChromosome <- which(as.character(LocMatrix[,1]) == CHR2)
-  END2 <- max(as.numeric(LocMatrix[SameChromosome,3]));
-}else if(as.character(opt["end2"]) != "NULL"){
-  END2 <- as.numeric(as.character(opt["end2"]))
-}else{
-  END2 <- END
-}
-Region2 <- which((as.character(LocMatrix[,1]) == CHR2) & (as.numeric(LocMatrix[,2]) >= START2) & (as.numeric(LocMatrix[,3]) <= END2))
 
 
 #=========================================================
@@ -261,6 +278,13 @@ if(as.character(opt["out"]) != "NULL"){
       abline(v=target, col="sienna4", lty=2, lwd=5)
     }
   }
+  
+  if(CHR=="all"){
+    Location <- cumsum(LINE_for_chromosome_border[1:(length(LINE_for_chromosome_border)-1)])/nrow(mat.diff)
+    abline(v=Location, col="black", lty=1, lwd=2)
+    abline(h=1-Location, col="black", lty=1, lwd=2)
+  }
+  
   dummy <- dev.off()
 }
 
