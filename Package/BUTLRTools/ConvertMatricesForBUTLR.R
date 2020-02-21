@@ -20,6 +20,10 @@ LocList <- strsplit(r, ":")
 LocMatrix <- matrix(unlist(LocList), ncol=3, byrow=TRUE)
 Resolution <- as.numeric(LocMatrix[1,3]) - as.numeric(LocMatrix[1,2]) + 1
 
+### NAを変換
+map <- ifelse(is.na(map), 0, map)
+
+
 # create new column name
 chromSize <- read.table(as.character(opt["chrom"]), sep="\t", header=F, check.names = FALSE)
 MAX <- chromSize[chromSize[,1]==as.character(LocMatrix[1,1]),2]
