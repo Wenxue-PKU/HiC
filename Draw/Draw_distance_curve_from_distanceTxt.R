@@ -3,7 +3,8 @@
 
 suppressPackageStartupMessages(library("optparse"))
 option_list <- list(  
-  make_option(c("-d", "--data"),help="Data directory"),
+  make_option(c("-d", "--data"), default="NA", help="Data directory (if in files setted, this setting will be ignore)"),
+  make_option(c("-i", "--in"), default="NA", help="Distance curve file separated by ,"),
   make_option(c("-n", "--names"),help="name of target(s), separated by ,"),
   make_option(c("-o", "--out"),default="NA", help="output png file"),
   make_option(c("-c", "--chr"),default="chr1", help="target chromosome to calculate (default=chr1)"),
@@ -30,6 +31,12 @@ SAMPLES <- unlist(strsplit(as.character(opt["names"]), ","))
 SAMPLE_NUMBER <- length(SAMPLES)
 CHR <- as.character(opt["chr"])
 TITLE <- as.character(opt["title"])
+FILE_INs <- unlist(strsplit(as.character(opt["in"]), ","))
+
+if(length(FILE_INs) != 1 && SAMPLE_NUMBER != length(FILE_INs)){
+  cat("sample names and input file should be equal\n")
+  q()
+}
 
 if(as.character(opt["color"]) == "NA"){
   c <- c("#e6194b", "#3cb44b", "#ffe119", "#0082c8", "#f58231", "#911eb4", "#46f0f0", "#f032e6", "#d2f53c", "#fabebe", "#008080", "#e6beff", "#aa6e28", "#fffac8", "#800000", "#aaffc3", "#808000", "#ffd8b1", "#000080", "#808080", "#FFFFFF", "#000000")
@@ -46,13 +53,19 @@ if(as.character(opt["color2"]) != "NA"){
 
 
 DATA <- list()
-for(NAME in SAMPLES){
-  file <- paste(DIR, NAME, "_distance.txt", sep="")
+for(i in 1:length(SAMPLES)){
+  NAME <- SAMPLES[i]
+  if(FILE_INs[1] == "NA"){
+    file <- paste(DIR, NAME, "_distance.txt", sep="")
+  }else{
+    file <- FILE_INs[i]
+  }
   D <- read.table(file, header=T, sep="\t", stringsAsFactors = F)
   index <- which(D[,1] == CHR & D[,2] == CHR)
   DATA[[NAME]] <- D[index, c("distance", "probability")]
   colnames(DATA[[NAME]]) <- c("x", "y")
 }
+
 
 commonDis <- as.numeric(DATA[[1]][,"x"])
 if(SAMPLE_NUMBER > 1){
