@@ -97,7 +97,7 @@ case $REF in
 					exit ;;
 			esac
 			;;
-	human_EBV)	BOWTIE2_INDEX=${HOME}/Genome/data/human/hg19_EBV/Bowtie2/hg19_EBV
+	hg19_EBV)	BOWTIE2_INDEX=${HOME}/Genome/data/human/hg19_EBV/Bowtie2/hg19_EBV
 			CHROM_LENGTH=3157782322
 			FILE_CHROME_LENGTH=${HOME}/Genome/data/human/hg19_EBV/LENGTH.txt
 			case $RESTRICTION in 
@@ -122,5 +122,5 @@ case $REF in
 			esac
 			;;
 	*)	echo "Please specify correct reference name"
-		eixt 1 ;;
+		exit 1 ;;
 esac
