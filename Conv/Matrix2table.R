@@ -55,17 +55,20 @@ if(as.character(opt["distance"]) == "inter"){
   MAX_INDEX = tapply(1:length(r.common), as.character(LocMatrix[,1]), max)
   THR_LENGTH = tapply(as.numeric(LocMatrix[,3]), as.character(LocMatrix[,1]), length) - 1
   if(as.character(opt["distance"]) != "NA"){
-    THR_LENGTH[CHROMOSOMES] = as.numeric(as.character(opt["distance"])) / Resolution
+    THR_LENGTH[CHROMOSOMES] = min(as.numeric(as.character(opt["distance"])) / Resolution, THR_LENGTH[CHROMOSOMES])
   }
   index_list <- c()
   for(chr in CHROMOSOMES){
-    for(d in seq(0, THR_LENGTH[chr])){
+    getindex <- function(d){
       index1 <- MIN_INDEX[chr]:(MAX_INDEX[chr] - d)
       index2 <- index1 + d
       index3 <- cbind(r.common[index1], r.common[index2])
-      index_list <- rbind(index_list, index3)
+      index3
     }
+    tmp <- do.call(rbind, lapply(seq(0, THR_LENGTH[chr]), getindex))
+    index_list <- rbind(index_list, tmp)
   }
+  rm(tmp)
 }
 write.table(index_list, file=paste(FILE_header, "_tmp_column.txt", sep=""), sep="\t", quote = FALSE, 
             row.names = FALSE, col.names = FALSE, eol = "\n")
