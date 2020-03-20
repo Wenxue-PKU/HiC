@@ -107,10 +107,10 @@ checkLocalFc <- function(i,j){
     return(0)
   }
   
-  ### 中心が右上の三角形で一番スコアが高い
-  if(map[i,j] < max(sss_all, na.rm = TRUE)){
-    return(0)
-  }
+  # ### 中心が右上の三角形で一番スコアが高い
+  # if(map[i,j] < max(sss_all, na.rm = TRUE)){
+  #   return(0)
+  # }
   
   ### 周りの3x3のどのタイルよりも中心3x3のスコアの方がlocal ratio以上高い
   sss_center_ave <- mean(sss_center, na.rm = TRUE)
@@ -155,7 +155,7 @@ checkBackground <- function(i,j){
   back_s
 }
 
-D_table <- c()
+D_table <- NULL
 MAX_NUM <- min(c(NUM_LINE-SHIFT_TO_CENTER-1, max(which(Location$end < T_max))-SHIFT_TO_CENTER))
 MIN_NUM <- max(c(SHIFT_TO_CENTER + 1, min(which(Location$start > T_min))))
 for(d in MIN_NUM:MAX_NUM){
@@ -192,12 +192,47 @@ for(d in MIN_NUM:MAX_NUM){
                      dis_fc=scores/Average, pval=Pvalues, local_fc=local_foldchange, back_ave=background_score, stringsAsFactors = FALSE)
     df <- df %>% filter(!is.na(Pvalues))
     D_table <- rbind(D_table, df)
+    rm(df, distance, Pvalues)
   }
+  rm(index1, index2, index3, local_foldchange, background_score, scores, scores_back)
 }
-rm(df, index1, index2, index3, local_foldchange, background_score, scores, scores_back, distance, Pvalues, map)
 
+
+if(is.null(D_table)){
+  cat("No peak detected\n")
+}
 D_table <- D_table %>% mutate(qval=p.adjust(pval, method = "BH"))
 D_table <- D_table %>% filter(local_fc != 0)
+
+
+#=============================================
+# 周りの領域をscanしてピークとなる領域を検出
+#=============================================
+### 最大のスコアを持つものに入れ替える
+removeOverlap <- function(k){
+  cen_x <- D_table[k,"id1"]
+  cen_y <- D_table[k,"id2"]
+  list_x <- max(c(1, cen_x - 5)):min(c(cen_x + 5, nrow(map)))
+  list_y <- max(c(1, cen_y - 5)):min(c(cen_y + 5, nrow(map)))
+  comb <- expand.grid(list_x, list_y)
+  comb <- data.frame(id1=as.integer(comb[,1]), id2=as.integer(comb[,2]), stringsAsFactors = FALSE)
+  comb <- dplyr::left_join(comb, D_table, by=c("id1", "id2"))
+  comb <- comb %>% filter(!is.na(qval))
+  
+  ### 周りに１つ以上他のsignificantなピークがあったらそちらを選ぶ
+  if(nrow(comb) > 1){
+    comb <- comb %>% filter(local_fc == max(comb$local_fc))
+  }
+  comb
+}
+
+D_table2 <- do.call(rbind, lapply(1:nrow(D_table), removeOverlap))
+
+### 重複しているentryを除く
+D_table <- D_table2 %>% distinct(id1, id2, .keep_all = TRUE)
+rm(D_table2, map)
+
+
 D_table <- dplyr::left_join(D_table, Location %>% rename(chr1=chr, start1=start, end1=end), by=c("id1"="id"))
 D_table <- dplyr::left_join(D_table, Location %>% rename(chr2=chr, start2=start, end2=end), by=c("id2"="id"))
 D_table <- D_table[,c("chr1", "start1", "end1", "chr2", "start2", "end2", "distance", "score", "control", "dis_fc", "pval", "qval", "local_fc", "back_ave")]
