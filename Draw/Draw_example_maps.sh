@@ -132,17 +132,16 @@ FLAG_linev=$(cat ${FILE_location} | head -n1 | grep -c linev)
 DB_loc=${FILE_location/.txt/.db}
 [ ! -e ${DB_loc} ] && file2database.R -i ${FILE_location} --id TRUE --db ${DB_loc} --table loc
 NUM_data=$(cat $FILE_location | wc -l)
+let NUM_data-=1
 
 #==============================================================
 # Drawing HiC map 
 #==============================================================
 [ ! -e ${DIR_OUT}/img ] && mkdir ${DIR_OUT}/img
 
-i=0
 for NAME in $SAMPLES
 do
 	COL=${COLORS[$i]}
-	let i=${i}+1
-	sbatch -N 2 -n 4 --array=1-${NUM_data} --job-name=dr_${NAME} $(sq --node) -o "${DIR_OUT}/drawing_map_for_${NAME}.log" --export=NAME="${NAME}",DIR_DATA="${DIR_DATA}",DIR_OUT="${DIR_OUT}",DB_loc="${DB_loc}",FLAG_lineh="${FLAG_lineh}",FLAG_linev="${FLAG_linev}",RESOLUTION="${RESOLUTION}",COL="${COL}",MAP_TYPE="${MAP_TYPE}",DIR_LIB="${DIR_LIB}",FILE_circles="${FILE_circles}" --open-mode append ${DIR_LIB}/lib/Drawing_individual_map.sh
+	sbatch --account=nomalab -N 1 -n 1 --mem=20G --array=1-${NUM_data} --job-name=dr_${NAME} $(sq --node --partition short) -o "${DIR_OUT}/drawing_map_for_${NAME}.log" --export=NAME="${NAME}",DIR_DATA="${DIR_DATA}",DIR_OUT="${DIR_OUT}",DB_loc="${DB_loc}",FLAG_lineh="${FLAG_lineh}",FLAG_linev="${FLAG_linev}",RESOLUTION="${RESOLUTION}",COL="${COL}",MAP_TYPE="${MAP_TYPE}",DIR_LIB="${DIR_LIB}",FILE_circles="${FILE_circles}" --open-mode append ${DIR_LIB}/lib/Drawing_individual_map.sh
 done
 
