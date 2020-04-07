@@ -182,6 +182,11 @@ if(CHR=="all"){
   }
   Region <- which((as.character(LocMatrix[,1]) == CHR) & (as.numeric(LocMatrix[,3]) >= START) & (as.numeric(LocMatrix[,2]) <= END))
   
+  if(length(Region) < 5){
+    cat(paste0("target region are too small. Probably too small area were specified.", CHR, ":", START, "-", END, "\n"))
+    q()
+  }
+  
   if(as.character(opt["chr2"]) != "NULL"){
     CHR2 <- as.character(opt["chr2"])
   }else{
@@ -201,6 +206,11 @@ if(CHR=="all"){
     END2 <- END
   }
   Region2 <- which((as.character(LocMatrix[,1]) == CHR2) & (as.numeric(LocMatrix[,3]) >= START2) & (as.numeric(LocMatrix[,2]) <= END2))
+  
+  if(length(Region2) < 5){
+    cat(paste0("target region are too small. Probably too small area were specified.", CHR2, ":", START2, "-", END2, "\n"))
+    q()
+  }
   
   map.extract <- map[Region, Region2]
 }
