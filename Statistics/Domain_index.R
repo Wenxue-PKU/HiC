@@ -96,7 +96,6 @@ for(d in (as.integer(T_MIN / Resolution)):(as.integer(T_MAX / Resolution))){
                    NormScore=as.numeric(map[index3])/Average, stringsAsFactors = FALSE)
   
   df <- df %>% filter(!is.na(NormScore)) %>% filter(!is.na(doNL), !is.na(doNR))
-  df <- df %>% mutate(doN_random=sample(D_ref[,"domain_num"], nrow(df)))
   D_table <- rbind(D_table , df)
 }
 
