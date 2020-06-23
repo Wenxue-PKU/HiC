@@ -139,10 +139,10 @@ FILE_enzyme_def=restriction_sites.txt
 
 ### JUICER program
 # Download from https://github.com/aidenlab/juicer/wiki/Download
-PROGRAM_JUICER=${HOME}/Software/juicebox_tools.jar
+PROGRAM_JUICER=${HOME}/Software/juicer/juicer.jar
 [ ! -e $PROGRAM_JUICER ] && echo "juicer program not found" && exit 1
-cp $PROGRAM_JUICER juicebox_tools.jar
-PROGRAM_JUICER=juicebox_tools.jar
+cp $PROGRAM_JUICER juicer.jar
+PROGRAM_JUICER=juicer.jar
 
 
 ### Chromosome file
@@ -160,38 +160,55 @@ FILE_CHROME_LENGTH=chromosome.txt
 if [ "$TARGET_CHR" != "NA" ]; then
 	if [ "$FLAG_oldmap" = "TRUE" ]; then
 		### for old custom hic pipeline (use XXX_sort.map.gz)
-		zcat ${FILE_MAP} | awk -v tc=$TARGET_CHR '$8=="U" && $15=="U" && $2==tc && $9==tc{
+		zcat ${FILE_MAP} | grep -v NA | awk -v tc=$TARGET_CHR '$8=="U" && $15=="U" && $2==tc && $9==tc{
 			if($4=="+"){str1=0}else{str1=1}
 			if($11=="+"){str2=0}else{str2=1}
-			$6=gsub("L","",$6); $6=gsub("R","",$6);
-			$13=gsub("L","",$13); $13=gsub("R","",$13);
-			print $1,str1,$2,$3,$6,str2,$9,$10,$13,$5,$12
-		}' | sort -k3,3d -k7,7d > ${FILE_data}
+			gsub("L","",$6); gsub("R","",$6);
+			gsub("L","",$13); gsub("R","",$13);
+			print $1,str1,$2,$3,$6,str2,$9,$10,$13,$5,$12 > "map_"$2"_"$9".txt"
+		}'
 	else
 		zcat ${FILE_MAP} | awk -v tc=$TARGET_CHR 'NR>1 && $8=="U" && $15=="U" && $2==tc && $9==tc{
 			if($4=="+"){str1=0}else{str1=1}
 			if($11=="+"){str2=0}else{str2=1}
-			print $1,str1,$2,$3,$6,str2,$9,$10,$13,$5,$12
-		}' | sort -k3,3d -k7,7d > ${FILE_data}
+			print $1,str1,$2,$3,$6,str2,$9,$10,$13,$5,$12 > "map_"$2"_"$9".txt"
+		}'
 	fi
 else
 	if [ "$FLAG_oldmap" = "TRUE" ]; then
 		### for old custom hic pipeline (use XXX_sort.map.gz)
-		zcat ${FILE_MAP} | awk '$8=="U" && $15=="U"{
+		zcat ${FILE_MAP} | grep -v NA | awk '$8=="U" && $15=="U"{
 			if($4=="+"){str1=0}else{str1=1}
 			if($11=="+"){str2=0}else{str2=1}
-			$6=gsub("L","",$6); $6=gsub("R","",$6);
-			$13=gsub("L","",$13); $13=gsub("R","",$13);
-			print $1,str1,$2,$3,$6,str2,$9,$10,$13,$5,$12
-		}' | sort -k3,3d -k7,7d > ${FILE_data}
+			gsub("L","",$6); gsub("R","",$6);
+			gsub("L","",$13); gsub("R","",$13);
+			print $1,str1,$2,$3,$6,str2,$9,$10,$13,$5,$12 > "map_"$2"_"$9".txt"
+		}'
 	else
 		zcat ${FILE_MAP} | awk 'NR>1 && $8=="U" && $15=="U"{
 			if($4=="+"){str1=0}else{str1=1}
 			if($11=="+"){str2=0}else{str2=1}
-			print $1,str1,$2,$3,$6,str2,$9,$10,$13,$5,$12
-		}' | sort -k3,3d -k7,7d > ${FILE_data}
+			print $1,str1,$2,$3,$6,str2,$9,$10,$13,$5,$12 > "map_"$2"_"$9".txt"
+		}'
 	fi
 fi
+
+CHROME=($(cut -f1 $FILE_CHROME_LENGTH | sort))
+let index_MAX=${#CHROME[@]}-1
+for i1 in $(seq 0 $index_MAX)
+do
+	c1=${CHROME[$i1]}
+	for i2 in $(seq $i1 $index_MAX)
+	do
+		c2=${CHROME[$i2]}
+		cat map_${c1}_${c2}.txt >> $FILE_data
+		if [ -e map_${c2}_${c1}.txt ]; then
+			cat map_${c2}_${c1}.txt | awk '{
+				print $1,$6,$7,$8,$9,$2,$3,$4,$5,$10,$9
+			}' >> $FILE_data
+		fi
+	done
+done
 
 
 #==============================================================
@@ -203,15 +220,15 @@ fi
 
 if [ "$TARGET_CHR" != "NA" ]; then
 	if [ $FLAG_RESOLUTION -eq 0 ]; then
-		java -Xms512m -Xmx2048m -jar $PROGRAM_JUICER pre -r ${RESOLUTION} -d -c $TARGET_CHR -q $THRESHOLD_MAPQ -t ${DIR_tmp} ${FILE_hic} $FILE_CHROME_LENGTH
+		java -Xmx2g -jar $PROGRAM_JUICER pre -r ${RESOLUTION} -d -c $TARGET_CHR -q $THRESHOLD_MAPQ -t ${DIR_tmp} ${FILE_hic} $FILE_CHROME_LENGTH
 	else
-		java -Xms512m -Xmx2048m -jar $PROGRAM_JUICER pre -r ${RESOLUTION} -d -c $TARGET_CHR -f $FILE_enzyme_def -q $THRESHOLD_MAPQ -t ${DIR_tmp} ${FILE_data} ${FILE_hic} $FILE_CHROME_LENGTH
+		java -Xmx2g -jar $PROGRAM_JUICER pre -r ${RESOLUTION} -d -c $TARGET_CHR -f $FILE_enzyme_def -q $THRESHOLD_MAPQ -t ${DIR_tmp} ${FILE_data} ${FILE_hic} $FILE_CHROME_LENGTH
 	fi
 else
 	if [ $FLAG_RESOLUTION -eq 0 ]; then
-		java -Xms512m -Xmx2048m -jar $PROGRAM_JUICER pre -r ${RESOLUTION} -q $THRESHOLD_MAPQ -t ${DIR_tmp} ${FILE_data} ${FILE_hic} $FILE_CHROME_LENGTH
+		java -Xmx2g -jar $PROGRAM_JUICER pre -r ${RESOLUTION} -q $THRESHOLD_MAPQ -t ${DIR_tmp} ${FILE_data} ${FILE_hic} $FILE_CHROME_LENGTH
 	else
-		java -Xms512m -Xmx2048m -jar $PROGRAM_JUICER pre -r ${RESOLUTION} -f $FILE_enzyme_def -q $THRESHOLD_MAPQ -t ${DIR_tmp} ${FILE_data} ${FILE_hic} $FILE_CHROME_LENGTH
+		java -Xmx2g -jar $PROGRAM_JUICER pre -r ${RESOLUTION} -f $FILE_enzyme_def -q $THRESHOLD_MAPQ -t ${DIR_tmp} ${FILE_data} ${FILE_hic} $FILE_CHROME_LENGTH
 	fi
 fi
 
