@@ -109,6 +109,14 @@ case $REF in
 					exit ;;
 			esac
 			;;
+	EBV)	CHROM_LENGTH=171823
+			FILE_CHROME_LENGTH=${HOME}/Genome/data/ebv/fromFangLu/LENGTH.txt
+			case $RESTRICTION in 
+				MboI-HinfI)	FILE_enzyme_def=${HOME}/Genome/data/ebv/fromFangLu/MboI-HinfI_sites.txt ;;
+				*)	echo "$RESTRICTION is not registered for $ORGANISM"
+					exit ;;
+			esac
+			;;
 	mm10)	BOWTIE2_INDEX=${HOME}/Genome/data/mouse/mm10/Bowtie2/mm10
 			CHROM_LENGTH=2725537669
 			DIR_contig=${HOME}/Genome/data/mouse/mm10
