@@ -141,13 +141,13 @@ FILE_enzyme_def=restriction_sites.txt
 # Download from https://github.com/aidenlab/juicer/wiki/Download
 PROGRAM_JUICER=${HOME}/Software/juicer/juicer.jar
 [ ! -e $PROGRAM_JUICER ] && echo "juicer program not found" && exit 1
-cp $PROGRAM_JUICER juicer.jar
-PROGRAM_JUICER=juicer.jar
+# cp $PROGRAM_JUICER juicer.jar
+# PROGRAM_JUICER=juicer.jar
 
 
 ### Chromosome file
 if [ "$TARGET_CHR" != "NA" ]; then
-	cat $FILE_CHROME_LENGTH | grep "$TARGET_CHR" > chromosome.txt
+	awk -v OFS='\t' -v tc="$TARGET_CHR" '$1==tc{print}' $FILE_CHROME_LENGTH > chromosome.txt
 else
 	cp $FILE_CHROME_LENGTH chromosome.txt
 fi
@@ -220,7 +220,7 @@ fi
 
 if [ "$TARGET_CHR" != "NA" ]; then
 	if [ $FLAG_RESOLUTION -eq 0 ]; then
-		java -Xmx2g -jar $PROGRAM_JUICER pre -r ${RESOLUTION} -d -c $TARGET_CHR -q $THRESHOLD_MAPQ -t ${DIR_tmp} ${FILE_hic} $FILE_CHROME_LENGTH
+		java -Xmx2g -jar $PROGRAM_JUICER pre -r ${RESOLUTION} -d -c $TARGET_CHR -q $THRESHOLD_MAPQ -t ${DIR_tmp} ${FILE_data} ${FILE_hic} $FILE_CHROME_LENGTH
 	else
 		java -Xmx2g -jar $PROGRAM_JUICER pre -r ${RESOLUTION} -d -c $TARGET_CHR -f $FILE_enzyme_def -q $THRESHOLD_MAPQ -t ${DIR_tmp} ${FILE_data} ${FILE_hic} $FILE_CHROME_LENGTH
 	fi
