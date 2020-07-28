@@ -5,8 +5,7 @@ suppressPackageStartupMessages(library("optparse"))
 option_list <- list(  
   make_option(c("-i", "--in"), default="NA", help="all rds separated by ,"),
   make_option(c("-o", "--out"), default="NA", help="output file of p-values"),
-  make_option(c("-g", "--group"), default="NA", help="groups (1 or 2) separated by ,. logFC >0 means 1<2"),
-  make_option(c("--filtering"), default="FDR", help="how to filter result ?")
+  make_option(c("-g", "--group"), default="NA", help="groups (1 or 2 or 3) separated by ,. 3 will be used for estimating dispersion. logFC >0 means 1<2")
 )
 opt <- parse_args(OptionParser(option_list=option_list))
 
@@ -16,8 +15,9 @@ suppressWarnings(suppressMessages(library(edgeR)))
 FILE_samples <- as.character(opt["in"])
 FILE_samples <- unlist(strsplit(FILE_samples, ","))
 group <- as.character(opt["group"])
-group <- factor(unlist(strsplit(group, ",")))
+group <- unlist(strsplit(group, ","))
 FILE_output <- as.character(opt["out"])
+
 
 if(file.exists(FILE_output)){
   file.remove(FILE_output)
@@ -80,18 +80,23 @@ for(i in 1:length(cm)){
   }
 }
 
-# cat("Make data ...\n")
+cat("Make data ...\n")
 interactions(data) <- as(interactions(data), "ReverseStrictGInteractions")
 data$totals <- lib.size
 
-# cat("edgeR analysis ...\n")
+cat("edgeR analysis ...\n")
+colnames(data) <- SAMPLES
+assay(data, "counts") <- assay(data)
+
 keep <- aveLogCPM(asDGEList(data, group=group)) > 0
 data <- data[keep,]
-data <- normOffsets(data, type="loess", se.out=TRUE)
-y <- asDGEList(data)
+
+cat("Normalization factor ...\n")
+# y <- calcNormFactors(data, type="loess", se.out=TRUE)
+y <- calcNormFactors(data)
 
 # design matrixの作成
-design <- model.matrix(~group)
+design <- model.matrix(~factor(group))
 
 
 # cat("Estimate dispersion...\n")
@@ -99,24 +104,14 @@ y <- estimateDisp(y, design)
 fit <- glmQLFit(y, design, robust=TRUE)
 
 
-result <- glmQLFTest(fit)
+result <- glmQLFTest(fit, coef=2)
 adj.p <- p.adjust(result$table$PValue, method="BH")
 NUM <- sum(result$table$PValue <= 0.05)
-
-
-FILETER_METHOD <- as.character(opt["filtering"])
 
 useful.cols <- as.vector(outer(c("seqnames", "start", "end"), 1:2, paste0))
 inter.frame <- as.data.frame(interactions(data))[,useful.cols]
 results.r <- data.frame(inter.frame, result$table, FDR=adj.p)
 results.r <- results.r[order(results.r$PValue),]
-if(NUM == 0){
-  results.r <- results.r[1:10,]
-}else if(FILETER_METHOD == "FDR"){
-  results.r <- results.r[results.r$FDR < 0.05,]
-}else{
-  results.r <- results.r[results.r$PValue < 0.05,]
-}
 write.table(results.r, file=FILE_output, sep="\t", quote=FALSE, row.names=FALSE, col.names = TRUE, append = FALSE)
 
 
