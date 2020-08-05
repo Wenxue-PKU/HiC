@@ -165,10 +165,11 @@ if(CHR=="all"){
   for(c in chromosomes){
     chromsome_length[c] <- max(as.numeric(LocMatrix[as.character(LocMatrix[,1]) == c,3]))
   }
-  chromosomes.sort <- sort(chromsome_length, decreasing = TRUE)
+  # chromosomes.sort <- sort(chromsome_length, decreasing = TRUE)
   Region <- c()
   LINE_for_chromosome_border <- c()
-  for(c in names(chromosomes.sort)){
+  # for(c in names(chromosomes.sort)){
+  for(c in chromosomes){
     Region <- c(Region, r[as.character(LocMatrix[,1]) == c])
     LINE_for_chromosome_border <- c(LINE_for_chromosome_border, sum(as.character(LocMatrix[,1]) == c))
   }
