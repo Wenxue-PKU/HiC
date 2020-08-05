@@ -31,6 +31,9 @@ Description
 
 	-x, --ref [ex. hg19]
 		organism name
+	
+	--control
+		calculate non-enhancer score
 EOF
 
 }
@@ -40,7 +43,7 @@ get_version(){
 }
 
 SHORT=hvn:l:m:i:o:x:
-LONG=help,version,name:,log:,matrix:,in:,out:,ref:
+LONG=help,version,name:,log:,matrix:,in:,out:,ref:,control
 PARSED=`getopt --options $SHORT --longoptions $LONG --name "$0" -- "$@"`
 if [[ $? -ne 0 ]]; then
 	exit 2
@@ -81,6 +84,10 @@ while true; do
 			REF="$2"
 			shift 2
 			;;
+		--control)
+			FLAG_control="TRUE"
+			shift 1
+			;;
 		--)
 			shift
 			break
@@ -102,6 +109,7 @@ INPUT_FILES=$@
 [ ! -n "${TEMPLATE_IN}" ] && echo "Please specify target file template" && exit 1
 [ ! -n "${TEMPLATE_OUT}" ] && echo "Please specify output file template" && exit 1
 [ ! -n "${REF}" ] && echo "Please specify ref" && exit 1
+FLAG_control=${FLAG_control:-"FALSE"}
 
 #-----------------------------------------------
 # Load setting
@@ -126,7 +134,7 @@ do
 	CHR=${CHRs[index]}
 	FILE_IN=${TEMPLATE_IN/XXX/$CHR}
 	FILE_OUT=${TEMPLATE_OUT/XXX/$CHR}
-	sbatch --account=nomalab -N 1 -n 2 --job-name=exScore_${NAME}_${CHR} --mem=100G --partition short -o "${FILE_log}_${CHR}.tmp.log" --open-mode append --wrap="echo ${CHR}; Rscript --slave --vanilla ${DIR_LIB}/Extract_targetScore_with_distanceNormalized_Zscore.R -i $FILE_IN -m ${DIR_data}/${CHR}.rds -o $FILE_OUT --format rds"
+	sbatch --account=nomalab -N 1 -n 2 --job-name=exScore_${NAME}_${CHR} --mem=100G --partition short -o "${FILE_log}_${CHR}.tmp.log" --open-mode append --wrap="echo ${CHR}; Rscript --slave --vanilla ${DIR_LIB}/Extract_targetScore_with_distanceNormalized_Zscore.R -i $FILE_IN -m ${DIR_data}/${CHR}.rds -o $FILE_OUT --format rds --control $FLAG_control"
 done
 
 JOB_ID=($(squeue -o "%j %F" -u hidekit | grep -e "exScore_${NAME}_${CHR}" | cut -f2 -d' ' | xargs))
