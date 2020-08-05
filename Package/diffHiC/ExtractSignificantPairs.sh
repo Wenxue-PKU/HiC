@@ -1,5 +1,5 @@
 #!/bin/bash
-# Significantなペアを抽出する(diffHiC packageを使う)
+# Significantなペアを抽出する(diffHic packageを使う)
 
 
 get_usage(){
@@ -25,20 +25,23 @@ Description
 	-d, --data [directory]
 		data directory
 	
-	-o, --out [output file]
-		output file
+	-o, --out [output directory]
+		output directory
 	
-	-x, --organism [human|mouse]
+	-x, --ref [ex. hg19]
 		organism name
 
-	-t, --title [title]
-		title appeared in excel tab
+	--include [including chromsome list]
+		if only specific chromosome should be calculated, specify the list. Separated by ,.
 
-	--draw_range [ex 200000]
-		half size of example map width. resolution x 20 seems good. (for 10kb resolution, draw 200kb half size = 200000)
+	--exclude [exclude chromsome list]
+		list of excluding chromosomes. Separated by ,. Ex. chrM,chrY
 
-	--filtering [FDR/Pval]
-		how to restrict the result. FDR (FDR < 0.05) or Pval (Pvalue < 0.05)
+	--FDR [FDR threshold]
+		how to restrict the result. default (FDR < 0.05)
+	
+	--distance [distance to merge result]
+		distance between interaction for merge results (default 0)
 EOF
 
 }
@@ -47,8 +50,8 @@ get_version(){
 	echo "${0} version 1.0"
 }
 
-SHORT=hvr:g:d:o:x:t:
-LONG=help,version,resolution:,group:,data:,out:,organism:,title:,draw_range:,filtering:
+SHORT=hvr:g:d:o:x:
+LONG=help,version,resolution:,group:,data:,out:,ref:,include:,exclude:,FDR:,distance:
 PARSED=`getopt --options $SHORT --longoptions $LONG --name "$0" -- "$@"`
 if [[ $? -ne 0 ]]; then
 	exit 2
@@ -68,7 +71,7 @@ while true; do
 		-r|--resolution)
 			RESOLUTION="$2"
 			shift 2
-			;;			
+			;;
 		-g|--group)
 			group="$2"
 			shift 2
@@ -78,23 +81,27 @@ while true; do
 			shift 2
 			;;
 		-o|--out)
-			FILE_OUT="$2"
+			DIR_OUT="$2"
 			shift 2
 			;;
-		-x|--organism)
-			ORGANISM="$2"
+		-x|--ref)
+			REF="$2"
 			shift 2
 			;;
-		-t|--title)
-			EXCEL_tab="$2"
+		--include)
+			CHR_include="$2"
 			shift 2
 			;;
-		--draw_range)
-			DRAW_WIDTH="$2"
+		--exclude)
+			CHR_exclude="$2"
 			shift 2
 			;;
-		--filtering)
-			FILTER_METHOD="$2"
+		--FDR)
+			FDR="$2"
+			shift 2
+			;;
+		--distance)
+			MERGE_DISTANCE="$2"
 			shift 2
 			;;
 		--)
@@ -114,122 +121,55 @@ TIME_STAMP=$(date +"%Y-%m-%d")
 [ ! -n "${group}" ] && echo "Please specify group" && exit 1
 [ ! -n "${RESOLUTION}" ] && echo "Please specify resolution" && exit 1
 [ ! -n "${DIR_DATA}" ] && echo "Please specify data directory" && exit 1
-[ ! -n "${FILE_OUT}" ] && echo "Please specify output file" && exit 1
-[ ! -n "${ORGANISM}" ] && echo "Please specify organism" && exit 1
-[ ! -n "${DRAW_WIDTH}" ] && echo "Please specify draw half width" && exit 1
-EXCEL_tab=${EXCEL_tab:-"Sheet1"}
-FILTER_METHOD=${FILTER_METHOD:-"FDR"}
+[ ! -n "${DIR_OUT}" ] && echo "Please specify output directory" && exit 1
+[ ! -n "${REF}" ] && echo "Please specify ref" && exit 1
+FDR=${FDR:-0.05}
+CHR_include=${CHR_include:-NA}
+CHR_exclude=${CHR_exclude:-NA}
+MERGE_DISTANCE=${MERGE_DISTANCE:-0}
 
 NAME_LIST="$@"
 
-case $ORGANISM in
-	human) CHRs="chr1 chr2 chr3 chr4 chr5 chr6 chr7 chr8 chr9 chr10 chr11 chr12 chr13 chr14 chr15 chr16 chr17 chr18 chr19 chr20 chr21 chr22 chrX" ;;
-	mouse) CHRs="chr1 chr2 chr3 chr4 chr5 chr6 chr7 chr8 chr9 chr10 chr11 chr12 chr13 chr14 chr15 chr16 chr17 chr18 chr19 chrX" ;;
-	*)     echo "Please specify correct organism"
-	       eixt 1 ;;
-esac
+[ ! -e ${DIR_OUT} ] && mkdir ${DIR_OUT}
+cd ${DIR_OUT}
+[ ! -e scores ] && mkdir log scores merge
+UNIQ_ID=$(echo $DIR_OUT | rev | cut -c 1-12 | rev)
 
-DIR_tmp=${FILE_OUT}_tmpDir
-[ ! -e ${DIR_tmp} ] && mkdir ${DIR_tmp} && mkdir ${DIR_tmp}/log ${DIR_tmp}/scores ${DIR_tmp}/hic ${DIR_tmp}/img
-UNIQ_ID=$(echo $FILE_OUT | rev | cut -c 1-12 | rev)
-FILE_excel=${FILE_OUT/.txt/.xlsx}
-FILE_excel_data=${DIR_tmp}/data_for_excel.txt
-FILE_top100=${FILE_OUT/.txt/_top100.xlsx}
-FILE_log=${FILE_OUT/.txt/.log}
+#-----------------------------------------------
+# Load setting
+#-----------------------------------------------
+source ${DIR_LIB}/../../utils/load_setting.sh -x $REF -r NA
+
+#-----------------------------------------------
+# Load chromosome length
+#-----------------------------------------------
+CHR_TABLE=$(Rscript --vanilla --slave ${DIR_LIB}/../../utils/Chromosome_length.R --in $FILE_CHROME_LENGTH --include $CHR_include --exclude $CHR_exclude)
+CHRs=($(echo $CHR_TABLE | xargs -n1 | awk 'NR==1' | tr ',' ' '))
+LENGTH=($(echo $CHR_TABLE | xargs -n1 | awk 'NR==2' | tr ',' ' '))
+CHRs_list=$(echo ${CHRs[@]} | tr ' ' ',')
 
 #==============================================================
-# Significant fragment pairsを定義
+# Significantly different fragment pairsを定義
 #==============================================================
-for CHR in $CHRs
+for i in $(seq 1 ${#CHRs[@]})
 do
+	let index=i-1
+	CHR=${CHRs[index]}
 	FILE_in=$(echo "$NAME_LIST" | xargs -n1 | xargs -I@ sh -c "echo ${DIR_DATA}/\@/${RESOLUTION}/Raw/${CHR}.rds" | xargs | tr ' ' ',')
-	sbatch -n 4 --job-name=si_${UNIQ_ID}_${CHR} $(sq --node) -o "${DIR_tmp}/log/define_significant_pairs_${CHR}.log" --open-mode append --wrap="Rscript2 --vanilla --slave ${DIR_LIB}/Extract_diff_pairs.R -i ${FILE_in} -o ${DIR_tmp}/scores/${CHR}.txt --group ${group} --filtering $FILTER_METHOD"
+	sbatch --account=nomalab -n 4 --job-name=si_${UNIQ_ID}_${CHR} --mem=100G --partition short -o "${DIR_OUT}/log/define_significant_pairs_${CHR}.log" --open-mode append --wrap="module load R/4.0.2 && Rscript --vanilla --slave ${DIR_LIB}/Extract_diff_pairs.R -i ${FILE_in} -o ${DIR_OUT}/scores/${CHR}.txt --group ${group}"
 done
 
-### 結果をまとめてFDRでソートする
-JOB_ID=($(squeue -o "%j %F" -u htanizawa | grep -e "si_${UNIQ_ID}" | cut -f2 -d' ' | xargs))
-JOB_ID_string=$(IFS=:; echo "${JOB_ID[*]}")
-DEPEND=""; [ -n "$JOB_ID_string" ] && DEPEND="--dependency=afterok:${JOB_ID_string}"
-sbatch -n 1 --job-name=si2_${UNIQ_ID} $DEPEND $(sq --node) -o "${DIR_tmp}/log/mix_result.log" --open-mode append <<-EOF
-#!/bin/sh
-cd ${DIR_tmp}/scores
-echo "chr1 start1 end1 chr2 start2 end2 distance logFC logCPM Pvalue FDR" | tr ' ' '\t' > ../pvalue.txt
-ls chr*.txt | xargs -n1 | xargs -n1 -I@ sh -c "cat \@ | tail -n+2" | sort -k11,11g | awk -v OFS='\t' '{m1=int((\$2+\$3)/2); m2=int((\$5+\$6)/2); dis=m1-m2; print \$1,\$2,\$3,\$4,\$5,\$6,dis,\$7,\$8,\$10,\$11}' >> ../pvalue.txt
-cat ../pvalue.txt | awk -v OFS='\t' 'NR>1{print \$1,\$2,\$3,0,\$4,\$5,\$6,0}' > ../pairs.txt
-EOF
-
-
 #==============================================================
-# Significant pairsのスコアを出力する
+# 指定した距離以内のinteractionをmergeする
 #==============================================================
-JOB_ID=($(squeue -o "%j %F" -u htanizawa | grep -e "si2_${UNIQ_ID}" | cut -f2 -d' ' | xargs))
-JOB_ID_string=$(IFS=:; echo "${JOB_ID[*]}")
-DEPEND=""; [ -n "$JOB_ID_string" ] && DEPEND="--dependency=afterok:${JOB_ID_string}"
-for NAME in $NAME_LIST
+for i in $(seq 1 ${#CHRs[@]})
 do
-	sbatch -n 4 --job-name=gs_${UNIQ_ID}_${NAME} $DEPEND $(sq --node) -o "${DIR_tmp}/log/get_hicScore.log" --open-mode append --wrap="cd ${DIR_tmp} && Rscript --vanilla --slave ${DIR_LIB}/../../Filter/Exctact_scores_of_indicated_pairs.R --in pairs.txt --dir ${DIR_DATA}/${NAME}/${RESOLUTION}/Raw --out ${DIR_tmp}/hic/${NAME}.txt"
+	let index=i-1
+	CHR=${CHRs[index]}
+	JOB_ID=($(squeue -o "%j %F" -u hidekit | grep -e "si_${UNIQ_ID}_${CHR}" | cut -f2 -d' ' | xargs))
+	JOB_ID_string=$(IFS=:; echo "${JOB_ID[*]}")
+	DEPEND=""; [ -n "$JOB_ID_string" ] && DEPEND="--dependency=afterok:${JOB_ID_string}"
+	sbatch --account=nomalab -N 1 -n 1 --job-name=si2_${UNIQ_ID}_${CHR} $DEPEND --mem=10G --partition short -o "${DIR_OUT}/log/define_significant_pairs_${CHR}.log" --open-mode append --wrap="tail -n +2 ${DIR_OUT}/scores/${CHR}.txt | awk -v OFS='\t' -v T=$FDR '\$11<T{print}' | pgltools formatbedpe | pgltools merge -stdInA -c 11 -o min -d $MERGE_DISTANCE -noH > ${DIR_OUT}/merge/${CHR}.txt"
 done
-
-#==============================================================
-# 取得してきたスコアをまとめる
-#==============================================================
-JOB_ID=($(squeue -o "%j %F" -u htanizawa | grep -e "gs_${UNIQ_ID}" | cut -f2 -d' ' | xargs))
-JOB_ID_string=$(IFS=:; echo "${JOB_ID[*]}")
-DEPEND=""; [ -n "$JOB_ID_string" ] && DEPEND="--dependency=afterok:${JOB_ID_string}"
-sbatch -n 1 --job-name=hic_${UNIQ_ID} $DEPEND $(sq --node) -o "/dev/null" --open-mode append <<-EOF
-#!/bin/sh
-cd ${DIR_tmp}/hic
-echo "$NAME_LIST" | tr ' ' '\t' > ../hic.txt
-echo "$NAME_LIST" | xargs -n1 | xargs -I@ sh -c "echo \@.txt" | xargs | xargs paste >> ../hic.txt
-cd ${DIR_tmp}
-paste pvalue.txt hic.txt > $FILE_OUT
-python ${DIR_LIB}/Summarize_significant_pairs.py -i ${FILE_OUT} -o ${FILE_excel} -g "${group}" -t "${EXCEL_tab}"
-EOF
-
-
-#==============================================================
-# TOP 100についてHi-C mapを描画する (distance > 100kb)
-#==============================================================
-JOB_ID=($(squeue -o "%j %F" -u htanizawa | grep -e "si2_${UNIQ_ID}" | cut -f2 -d' ' | xargs))
-JOB_ID_string=$(IFS=:; echo "${JOB_ID[*]}")
-DEPEND=""; [ -n "$JOB_ID_string" ] && DEPEND="--dependency=afterok:${JOB_ID_string}"
-DB_loc=${DIR_tmp}/location.db
-FILE_location=${DIR_tmp}/location.txt
-sbatch -n 1 --job-name=drw_${UNIQ_ID} $DEPEND $(sq --node) -o "${DIR_tmp}/log/drawGraph.log" --open-mode append <<-EOF
-#!/bin/sh
-echo "chr1 start1 end1 chr2 start2 end2" | tr ' ' '\t' > "$FILE_location"
-cat ${DIR_tmp}/pvalue.txt | awk -v OFS='\t' -v halfW=${DRAW_WIDTH} 'NR>1&&\$7>100000&&\$2-halfW>0&&\$5-halfW>0{print \$1,\$2-halfW,\$3+halfW,\$4,\$5-halfW,\$6+halfW}' | head -n 100 >> $FILE_location
-file2database.R -i ${FILE_location} --id TRUE --db ${DB_loc} --table loc
-for NAME in $NAME_LIST
-do
-	for id in \$(seq 1 100)
-	do
-		CHR1=\$(sqlite3 ${DB_loc} "select chr1 from loc where id='\${id}'")
-		START1=\$(sqlite3 ${DB_loc} "select start1 from loc where id='\${id}'")
-		END1=\$(sqlite3 ${DB_loc} "select end1 from loc where id='\${id}'")
-		CHR2=\$(sqlite3 ${DB_loc} "select chr2 from loc where id='\${id}'")
-		START2=\$(sqlite3 ${DB_loc} "select start2 from loc where id='\${id}'")
-		END2=\$(sqlite3 ${DB_loc} "select end2 from loc where id='\${id}'")
-		sbatch -n 4 --job-name=drw_${UNIQ_ID}_\${id} \$(sq --node) -o "${DIR_tmp}/log/drawGraph_\${id}.log" --open-mode append --wrap="Rscript --vanilla --slave ${DIR_LIB}/../../Draw/Draw_matrix.R -i ${DIR_DATA}/\${NAME}/${RESOLUTION}/Raw/\${CHR1}.rds --normalize NA --zero NA --na na --chr \${CHR1} --start \${START1} --end \${END1} --chr2 \${CHR2} --start2 \${START2} --end2 \${END2} --unit p --max 0.95 --color matlab --width 500 -o ${DIR_tmp}/img/rank_\${id}_\${NAME}.png"
-	done
-done
-
-#==============================================================
-# 取得してきたスコアと画像をまとめる
-#==============================================================
-JOB_ID=(\$(squeue -o "%j %F" -u htanizawa | grep -e "drw_${UNIQ_ID}" | cut -f2 -d' ' | xargs))
-JOB_ID_string=\$(IFS=:; echo "${JOB_ID[*]}")
-DEPEND=""; [ -n "\$JOB_ID_string" ] && DEPEND="--dependency=afterok:\${JOB_ID_string}"
-sbatch -n 1 --job-name=xls_${UNIQ_ID} \$DEPEND \$(sq --node) -o "${FILE_log}" --open-mode append <<-EEE
-#!/bin/sh
-cat ${DIR_tmp}/pvalue.txt | head -n1 > $FILE_excel_data
-cat ${DIR_tmp}/pvalue.txt | awk -v OFS='\t' -v halfW=${DRAW_WIDTH} 'NR>1&&\\\$7>100000&&\\\$2-halfW>0&&\\\$5-halfW>0' | head -n 100 >> $FILE_excel_data
-cd ${DIR_tmp}/img
-python ${DIR_LIB}/Summarize_top100.py -i $FILE_excel_data -o ${FILE_top100} --image ${DIR_tmp}/img --samples $(echo "$NAME_LIST" | tr ' ' ',')
-find ${DIR_tmp}/log -type f -empty -delete
-# rm -r ${DIR_tmp}
-EEE
-
-EOF
 
 

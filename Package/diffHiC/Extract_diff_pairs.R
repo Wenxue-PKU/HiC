@@ -80,18 +80,18 @@ for(i in 1:length(cm)){
   }
 }
 
-cat("Make data ...\n")
+# cat("Make data ...\n")
 interactions(data) <- as(interactions(data), "ReverseStrictGInteractions")
 data$totals <- lib.size
 
-cat("edgeR analysis ...\n")
+# cat("edgeR analysis ...\n")
 colnames(data) <- SAMPLES
 assay(data, "counts") <- assay(data)
 
 keep <- aveLogCPM(asDGEList(data, group=group)) > 0
 data <- data[keep,]
 
-cat("Normalization factor ...\n")
+# cat("Normalization factor ...\n")
 # y <- calcNormFactors(data, type="loess", se.out=TRUE)
 y <- calcNormFactors(data)
 
