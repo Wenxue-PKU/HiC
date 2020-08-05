@@ -116,12 +116,13 @@ map2 <- ifelse(is.infinite(map2), NA, map2)
 
 ### 先に領域を絞る
 if(eval(parse(text=opt["extract_first"]))){
-  map1 <- map1[Region, Region2]
+  map1.tmp <- map1[Region, Region2]
   r2 <- rownames(map2)
-  Region <- intersect(rownames(map1), r2)
-  Region2 <- intersect(colnames(map1), r2)
+  Region <- intersect(rownames(map1.tmp), r2)
+  Region2 <- intersect(colnames(map1.tmp), r2)
   map2 <- map2[Region, Region2]
   map1 <- map1[Region, Region2]
+  rm(map1.tmp)
 }
 
 
@@ -141,12 +142,13 @@ if(eval(parse(text=opt["normalize"]))){
 
 # 領域を絞る（通常の順序)
 if(!eval(parse(text=opt["extract_first"]))){
-  map1 <- map1[Region, Region2]
+  map1.tmp <- map1[Region, Region2]
   r2 <- rownames(map2)
-  Region <- intersect(rownames(map1), r2)
-  Region2 <- intersect(colnames(map1), r2)
+  Region <- intersect(rownames(map1.tmp), r2)
+  Region2 <- intersect(colnames(map1.tmp), r2)
   map2 <- map2[Region, Region2]
   map1 <- map1[Region, Region2]
+  rm(map1.tmp)
 }
 
 
