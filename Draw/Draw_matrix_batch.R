@@ -7,7 +7,9 @@ suppressPackageStartupMessages(library("optparse"))
 option_list <- list(  
   make_option(c("-i", "--in"),help="directory of matrices located"),
   make_option(c("-o", "--out"),help="output directory"),
-  make_option(c("--location"), default="NA", help="file describe target loci"),
+  make_option(c("--location"), default="NA", help="file describe target loci. excel file is okay"),
+  make_option(c("--draw_area"), default="NA", help="instead of drawing input file area, draw surrounded xxx area (upstream XXX, downstream XXX) from center"),
+  make_option(c("--sufix"), default="NA", help="sufix for output file name."),
   make_option(c("--distance"), default=FALSE, help="normalized by distance curve"),
   make_option(c("--normalize"), default="NA", help="NA, average: average will be 1, probability: score were divided by total read"),
   make_option(c("--moving_average"), default=0, help="number of merging bin for moving average calculation"),
@@ -78,7 +80,14 @@ lseq <- function(from=1, to=100000, length.out=6) {
 ### location file
 # chr1, start1, end1, chr2, start2, end2, name
 FILE_location <- as.character(opt["location"])
-D_location <- fread(FILE_location, header = TRUE)
+if(substring(FILE_location, nchar(FILE_location)-3, nchar(FILE_location)) == "xlsx"){
+  library("xlsx")
+  D_location <- read.xlsx(FILE_location, sheetIndex=1, header=TRUE, stringsAsFactors = FALSE)
+}else{
+  D_location <- fread(FILE_location, header=TRUE, sep="\t", stringsAsFactors = FALSE) %>% as.data.frame()
+}
+
+
 if(!"chr1" %in% colnames(D_location)){
   cat("chr1 should be specified")
   q()
@@ -91,10 +100,16 @@ if(!"end1" %in% colnames(D_location)){
   cat("end1 should be specified")
   q()
 }
-draw_range <- min(D_location %>% mutate(area=end1-start1) %>% pull(area))
-if(draw_range < 20000){
-  cat("Some of the draw range are too small:", draw_range)
-  q()
+
+### もしnameがなかったら上から順にidを付ける
+if(!"name" %in% colnames(D_location)){
+  D_location <- D_location %>% mutate(name=row_number())
+}
+
+### name sufix
+NAME_SUFIX <- as.character(opt["sufix"])
+if(NAME_SUFIX != "NA"){
+  D_location$name = paste0(D_location$name, NAME_SUFIX)
 }
 
 if(!("chr2" %in% colnames(D_location))){
@@ -102,6 +117,20 @@ if(!("chr2" %in% colnames(D_location))){
   D_location[,"start2"] = D_location[,"start1"]
   D_location[,"end2"] = D_location[,"end1"]
 }
+
+RANGE_DRAW <- as.character(opt["draw_area"])
+if(RANGE_DRAW != "NA"){
+  RANGE_DRAW <- as.numeric(RANGE_DRAW)
+  D_location <- D_location %>% mutate(center1=as.integer((start1 + end1)/2), center2=as.integer((start2 + end2)/2))
+  D_location <- D_location %>% mutate(start1=center1 - RANGE_DRAW, end1=center1 + RANGE_DRAW, start2 = center2 - RANGE_DRAW, end2 = center2 + RANGE_DRAW)
+}else{
+  draw_range_min <- min(D_location %>% mutate(area=end1-start1) %>% pull(area))
+  if(draw_range_min < 20000){
+    cat("Some of the draw range are too small:", draw_range)
+    q()
+  }
+}
+
 
 checkDIRpath <- function(DIR){
   if(substring(DIR, nchar(DIR), nchar(DIR)) != "/"){
