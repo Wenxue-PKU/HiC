@@ -277,7 +277,7 @@ for(cc in D_location %>% distinct(chr1) %>% pull(chr1) %>% as.character()){
     
     
     if(as.character(opt["width"]) == "NULL"){
-      width <- nrow(mat.diff)
+      width <- ncol(mat.diff)
     }else{
       width <- as.numeric(as.character(opt["width"]))
     }
@@ -298,7 +298,7 @@ for(cc in D_location %>% distinct(chr1) %>% pull(chr1) %>% as.character()){
       for(i in 1:nrow(DATA_circle)){
         if(DATA_circle[i,1] %in% Region1 & DATA_circle[i,2] %in% Region2){
           par(new=T)
-          plot(which(DATA_circle[i,1] == Region1), nrow(mat.diff) - which(DATA_circle[i,2] == Region2)+1, pch=21, xlim=c(1,ncol(mat.diff)), 
+          plot(which(DATA_circle[i,2] == Region2), nrow(mat.diff) - which(DATA_circle[i,1] == Region1)+1, pch=21, xlim=c(1,ncol(mat.diff)),
                ylim=c(1,nrow(mat.diff)), xaxs="i", yaxs="i", cex=2, axes=F, col='black', lwd=2.5)
         }
       }

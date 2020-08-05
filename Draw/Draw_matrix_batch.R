@@ -68,6 +68,7 @@ Transform <- function(mat){
   mat.rev = t(mat[d+1-c(1:d), ])
   mat.rev
 }
+  
 
 lseq <- function(from=1, to=100000, length.out=6) {
   if(from == to){
@@ -304,7 +305,7 @@ for(cc in D_location %>% distinct(chr1) %>% pull(chr1) %>% as.character()){
     
     
     if(as.character(opt["width"]) == "NULL"){
-      width <- nrow(map)
+      width <- ncol(map)
     }else{
       width <- as.numeric(as.character(opt["width"]))
     }
@@ -341,11 +342,11 @@ for(cc in D_location %>% distinct(chr1) %>% pull(chr1) %>% as.character()){
     if(FILE_circle != "NULL"){
       nc <- colnames(map.extract)
       nr <- rownames(map.extract)
-      OK_pair <- D_circle[,1] %in% nr & D_circle[,2] %in% nc
+      OK_pair <- D_circle[,1] %in% nc & D_circle[,2] %in% nr
       D_circle_sub <- D_circle[OK_pair,]
       for(i in 1:nrow(D_circle_sub)){
         par(new=T)
-        plot(which(D_circle_sub[i,1] == nr), nrow(map.extract) - which(D_circle_sub[i,2] == nc)+1, pch=21, xlim=c(1,ncol(map.extract)), 
+        plot(which(D_circle_sub[i,2] == nc), nrow(map.extract) - which(D_circle_sub[i,1] == nr)+1, pch=21, xlim=c(1,ncol(map.extract)),
              ylim=c(1,nrow(map.extract)), xaxs="i", yaxs="i", cex=2, axes=F, col='black', lwd=2.5)
       }
     }
