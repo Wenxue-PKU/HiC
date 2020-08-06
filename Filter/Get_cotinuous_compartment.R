@@ -4,7 +4,7 @@
 suppressPackageStartupMessages(library("optparse"))
 option_list <- list(  
   make_option(c("-i", "--in"), default="NA", help="Compartment definition file"),
-  make_option(c("-o", "--out"), default="NA", help="mask object")
+  make_option(c("-o", "--out"), default="NA", help="output file")
 )
 opt <- parse_args(OptionParser(option_list=option_list))
 
@@ -23,24 +23,21 @@ COMP <- read.table(FILE_comp, header=FALSE, sep="\t", stringsAsFactors = FALSE, 
 colnames(COMP) <- c("chr", "start", "end", "compartment")
 COMP[is.na(COMP[,"compartment"]), "compartment"] <- "N"
 
-index_comp <- rep(0, nrow(COMP))
+domain_id <- rep(0, nrow(COMP))
 for(n in 2:nrow(COMP)){
-  index_comp[n] <- ifelse(COMP[n-1,"compartment"] == COMP[n,"compartment"] & COMP[n-1,"chr"] == COMP[n,"chr"] , index_comp[n-1], index_comp[n-1]+1)
+  domain_id[n] <- ifelse(COMP[n-1,"compartment"] == COMP[n,"compartment"] & COMP[n-1,"chr"] == COMP[n,"chr"] , domain_id[n-1], domain_id[n-1]+1)
 }
 
-COMP <- data.frame(COMP, index_comp)
+COMP <- data.frame(COMP, domain_id)
 
-data <- COMP %>% dplyr::group_by(index_comp, chr,compartment) %>% 
+D_out <- COMP %>% dplyr::group_by(domain_id, chr,compartment) %>% 
   dplyr::summarise(start=min(start), end=max(end))
 
 options(scipen=10)
-Target <- list()
-
-Target$chr <- unique(COMP[,"chr"])
-Target$A <- as.data.frame(data %>% dplyr::filter(compartment=="A") %>% ungroup() %>% select(chr, start, end))
-Target$B <- as.data.frame(data %>% dplyr::filter(compartment=="B") %>% ungroup() %>% select(chr, start, end))
-
 FILE_out <- as.character(opt["out"])
-saveRDS(Target, FILE_out)
+write.table(D_out %>% select(chr, start, end, compartment, domain_id), FILE_out, sep = "\t", row.names = FALSE, col.names = TRUE, quote = FALSE)
+
+
+
 
 
