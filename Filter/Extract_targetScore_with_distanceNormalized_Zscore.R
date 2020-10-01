@@ -1,13 +1,12 @@
 #!/usr/bin/Rscript
-# Extract target score from Hi-C matrices (Enhancer & Promoter) and output Z-score, distance normalized score
+# Extract target score from Hi-C matrices and output Z-score, distance normalized score
 
 suppressPackageStartupMessages(library("optparse"))
 option_list <- list(  
   make_option(c("-i", "--in"),help="target combination file"),
   make_option(c("-m", "--mat"), default="NA", help="matrices"),
   make_option(c("-o", "--out"),help="output files of scores"),
-  make_option(c("--format"), default="rds", help="input file format (default: rds)"),
-  make_option(c("--control"), default="FALSE", help="calculate control window score (none enhancer) ")
+  make_option(c("--format"), default="rds", help="input file format (default: rds)")
 )
 opt <- parse_args(OptionParser(option_list=option_list))
 
@@ -28,7 +27,6 @@ FILE_in <- as.character(opt["in"])
 FILE_out <- as.character(opt["out"])
 FILE_matrix <- as.character(opt["mat"])
 FILE_format <- as.character(opt["format"])
-FLAG_control <- eval(parse(text=as.character(opt["control"])))
 
 if(FILE_format == "rds"){
   FILE_object <- sub(".matrix", ".rds", FILE_matrix)
@@ -47,13 +45,12 @@ r <- rownames(map)
 tmp <- unlist(strsplit(r[1], split = ":"))
 RESOLUTION <- as.numeric(tmp[3]) - as.numeric(tmp[2]) + 1
 
-D_table <- read.table(FILE_in, header=TRUE, sep="\t", stringsAsFactors = FALSE)
-if(FLAG_control){
-  D_table <- D_table %>% select(window_nonenhancer, window_TSS, distance)
-}else{
-  D_table <- D_table %>% select(window_enhancer, window_TSS, distance)
-}
-
+D_table <- fread(FILE_in, header=TRUE, sep="\t", stringsAsFactors = FALSE) %>% as.data.frame()
+COLUMN_NAME <- colnames(D_table)
+D_table <- D_table[,1:2]
+colnames(D_table) <- c("window_left", "window_right")
+D_table <- D_table %>% mutate(t1=window_left, t2=window_right) %>% tidyr::separate(t1, c("chr1", "start1", "end1"), ":") %>% tidyr::separate(t2, c("chr2", "start2", "end2"), ":")
+D_table <- D_table %>% mutate(distance = abs(as.numeric(start1) - as.numeric(start2))) %>% select(window_left, window_right, distance)
 
 
 #=============================================
@@ -74,22 +71,18 @@ getStat <- function(d){
     data.frame(distance=distance, ave=NA, sd=NA)
   }
 }
-D_stat <- do.call(rbind, pblapply(1:(NUM_LINE-1), getStat))
-D_stat <- D_stat %>% filter(distance < 1000000)
+MAX_distance <- D_table %>% pull(distance) %>% max()
+D_stat <- do.call(rbind, pblapply(1:(MAX_distance/RESOLUTION), getStat))
 
 ### filter window
-if(FLAG_control){
-  D_table <- D_table %>% filter(window_nonenhancer %in% r, window_TSS %in% r)
-  D_table <- D_table %>% mutate(raw=map[D_table %>% select(window_nonenhancer, window_TSS) %>% as.matrix()])
-}else{
-  D_table <- D_table %>% filter(window_enhancer %in% r, window_TSS %in% r)
-  D_table <- D_table %>% mutate(raw=map[D_table %>% select(window_enhancer, window_TSS) %>% as.matrix()])
-}
-
-
+D_table <- D_table %>% filter(window_left %in% r, window_right %in% r)
+D_table <- D_table %>% mutate(raw=map[D_table %>% select(window_left, window_right) %>% as.matrix()])
 D_table <- dplyr::left_join(D_table, D_stat, by="distance")
+rm(D_stat)
 D_table <- D_table %>% mutate(disScore=raw/ave, Zscore=(raw-ave)/sd)
 D_table <- D_table %>% select(-ave, -sd)
+colnames(D_table)[1:2] <- COLUMN_NAME[1:2]
+
 
 write.table(D_table, FILE_out, sep = "\t", row.names = FALSE, col.names = TRUE, quote = FALSE)
 
