@@ -29,6 +29,12 @@ Description
 	-c, --chromosome [only calculate specific chromosome]
 		Only calculate the specified chromosome's intra matrices
 
+	-s, --start [number]
+		only calcualte specific region. start position of extract
+
+	-e, --end [number]
+		only calcualte specific region. end position of extract
+
 	-x, --ref [ex. hg19]
 		organism reference sequence name
 	
@@ -42,8 +48,8 @@ get_version(){
 	echo "${0} version 1.0"
 }
 
-SHORT=hi:o:r:f:q:c:x:
-LONG=help,in:,out:,resolution:,restriction:,mapQ:,chromosome:,ref:,old_map
+SHORT=hi:o:r:f:q:c:s:e:x:
+LONG=help,in:,out:,resolution:,restriction:,mapQ:,chromosome:,start:,end:,ref:,old_map
 PARSED=`getopt --options $SHORT --longoptions $LONG --name "$0" -- "$@"`
 if [[ $? -ne 0 ]]; then
 	exit 2
@@ -80,6 +86,14 @@ while true; do
 			TARGET_CHR="$2"
 			shift 2
 			;;
+		-s|--start)
+			START="$2"
+			shift 2
+			;;
+		-e|--end)
+			END="$2"
+			shift 2
+			;;
 		-x|--ref)
 			REF="$2"
 			shift 2
@@ -109,6 +123,8 @@ THRESHOLD_MAPQ=${CHR_include:-30}
 RESTRICTION=${RESTRICTION:-NA}
 FLAG_oldmap=${FLAG_oldmap:-FALSE}
 TARGET_CHR=${TARGET_CHR:-NA}
+START=${START:-0}
+END=${END:-all}
 
 #-----------------------------------------------
 # Load setting
@@ -120,6 +136,7 @@ source ${DIR_LIB}/../../utils/load_setting.sh -x $REF -r $RESTRICTION
 # All calculation will be done in tmp directory
 #-----------------------------------------------
 DIR_tmp=$(mktemp -d /tmp/tmp_hic_juicer.XXXXXX)
+[ ! -e ${DIR_tmp} ] && mkdir ${DIR_tmp}
 FILE_data=data_for_hic.txt
 FILE_hic=matrix.hic
 trap "rm -r ${DIR_tmp}" 0
@@ -139,10 +156,9 @@ FILE_enzyme_def=restriction_sites.txt
 
 ### JUICER program
 # Download from https://github.com/aidenlab/juicer/wiki/Download
-PROGRAM_JUICER=${HOME}/Software/juicer/juicer.jar
+
+PROGRAM_JUICER=${HOME}/Software/juicer/juicer_tools_8.5.16.jar
 [ ! -e $PROGRAM_JUICER ] && echo "juicer program not found" && exit 1
-# cp $PROGRAM_JUICER juicer.jar
-# PROGRAM_JUICER=juicer.jar
 
 
 ### Chromosome file
@@ -160,19 +176,37 @@ FILE_CHROME_LENGTH=chromosome.txt
 if [ "$TARGET_CHR" != "NA" ]; then
 	if [ "$FLAG_oldmap" = "TRUE" ]; then
 		### for old custom hic pipeline (use XXX_sort.map.gz)
-		zcat ${FILE_MAP} | grep -v NA | awk -v tc=$TARGET_CHR '$8=="U" && $15=="U" && $2==tc && $9==tc{
-			if($4=="+"){str1=0}else{str1=1}
-			if($11=="+"){str2=0}else{str2=1}
-			gsub("L","",$6); gsub("R","",$6);
-			gsub("L","",$13); gsub("R","",$13);
-			print $1,str1,$2,$3,$6,str2,$9,$10,$13,$5,$12 > "map_"$2"_"$9".txt"
-		}'
+		if [ "$END" != "all" ]; then
+			zcat ${FILE_MAP} | grep -v NA | awk -v tc=$TARGET_CHR '$8=="U" && $15=="U" && $2==tc && $9==tc && $3>start && $10>start && $3<end && $10<end{
+				if($4=="+"){str1=0}else{str1=1}
+				if($11=="+"){str2=0}else{str2=1}
+				gsub("L","",$6); gsub("R","",$6);
+				gsub("L","",$13); gsub("R","",$13);
+				print $1,str1,$2,$3,$6,str2,$9,$10,$13,$5,$12 > "map_"$2"_"$9".txt"
+			}'
+		else
+			zcat ${FILE_MAP} | grep -v NA | awk -v tc=$TARGET_CHR '$8=="U" && $15=="U" && $2==tc && $9==tc && $3>start && $10>start{
+				if($4=="+"){str1=0}else{str1=1}
+				if($11=="+"){str2=0}else{str2=1}
+				gsub("L","",$6); gsub("R","",$6);
+				gsub("L","",$13); gsub("R","",$13);
+				print $1,str1,$2,$3,$6,str2,$9,$10,$13,$5,$12 > "map_"$2"_"$9".txt"
+			}'
+		fi
 	else
-		zcat ${FILE_MAP} | awk -v tc=$TARGET_CHR 'NR>1 && $8=="U" && $15=="U" && $2==tc && $9==tc{
-			if($4=="+"){str1=0}else{str1=1}
-			if($11=="+"){str2=0}else{str2=1}
-			print $1,str1,$2,$3,$6,str2,$9,$10,$13,$5,$12 > "map_"$2"_"$9".txt"
-		}'
+		if [ "$END" != "all" ]; then
+			zcat ${FILE_MAP} | awk -v tc=$TARGET_CHR -v start=${START} -v end=${END} 'NR>1 && $8=="U" && $15=="U" && $2==tc && $9==tc && $3>start && $10>start && $3<end && $10<end{
+				if($4=="+"){str1=0}else{str1=1}
+				if($11=="+"){str2=0}else{str2=1}
+				print $1,str1,$2,$3,$6,str2,$9,$10,$13,$5,$12 > "map_"$2"_"$9".txt"
+			}'
+		else
+			zcat ${FILE_MAP} | awk -v tc=$TARGET_CHR -v start=${START} -v end=${END} 'NR>1 && $8=="U" && $15=="U" && $2==tc && $9==tc && $3>start && $10>start{
+				if($4=="+"){str1=0}else{str1=1}
+				if($11=="+"){str2=0}else{str2=1}
+				print $1,str1,$2,$3,$6,str2,$9,$10,$13,$5,$12 > "map_"$2"_"$9".txt"
+			}'
+		fi
 	fi
 else
 	if [ "$FLAG_oldmap" = "TRUE" ]; then
@@ -201,11 +235,19 @@ do
 	for i2 in $(seq $i1 $index_MAX)
 	do
 		c2=${CHROME[$i2]}
-		cat map_${c1}_${c2}.txt >> $FILE_data
-		if [ -e map_${c2}_${c1}.txt ]; then
-			cat map_${c2}_${c1}.txt | awk '{
-				print $1,$6,$7,$8,$9,$2,$3,$4,$5,$10,$9
+		if [ "$c1" = "$c2" ]; then
+			cat map_${c1}_${c2}.txt | awk -v OFS='\t' '$4<=$8{
+				print
+			}$4>$8{
+				print $1,$6,$7,$8,$9,$2,$3,$4,$5,$11,$10
 			}' >> $FILE_data
+		else
+			cat map_${c1}_${c2}.txt >> $FILE_data
+			if [ -e map_${c2}_${c1}.txt ]; then
+				cat map_${c2}_${c1}.txt | awk '{
+					print $1,$6,$7,$8,$9,$2,$3,$4,$5,$11,$10
+				}' >> $FILE_data
+			fi
 		fi
 	done
 done
@@ -220,15 +262,15 @@ fi
 
 if [ "$TARGET_CHR" != "NA" ]; then
 	if [ $FLAG_RESOLUTION -eq 0 ]; then
-		java -Xmx2g -jar $PROGRAM_JUICER pre -r ${RESOLUTION} -d -c $TARGET_CHR -q $THRESHOLD_MAPQ -t ${DIR_tmp} ${FILE_data} ${FILE_hic} $FILE_CHROME_LENGTH
+		java -Xmx100g -jar $PROGRAM_JUICER pre -r ${RESOLUTION} -d -c $TARGET_CHR -q $THRESHOLD_MAPQ -t ${DIR_tmp} ${FILE_data} ${FILE_hic} $FILE_CHROME_LENGTH
 	else
-		java -Xmx2g -jar $PROGRAM_JUICER pre -r ${RESOLUTION} -d -c $TARGET_CHR -f $FILE_enzyme_def -q $THRESHOLD_MAPQ -t ${DIR_tmp} ${FILE_data} ${FILE_hic} $FILE_CHROME_LENGTH
+		java -Xmx100g -jar $PROGRAM_JUICER pre -r ${RESOLUTION} -d -c $TARGET_CHR -f $FILE_enzyme_def -q $THRESHOLD_MAPQ -t ${DIR_tmp} ${FILE_data} ${FILE_hic} $FILE_CHROME_LENGTH
 	fi
 else
 	if [ $FLAG_RESOLUTION -eq 0 ]; then
-		java -Xmx2g -jar $PROGRAM_JUICER pre -r ${RESOLUTION} -q $THRESHOLD_MAPQ -t ${DIR_tmp} ${FILE_data} ${FILE_hic} $FILE_CHROME_LENGTH
+		java -Xmx100g -jar $PROGRAM_JUICER pre -r ${RESOLUTION} -q $THRESHOLD_MAPQ -t ${DIR_tmp} ${FILE_data} ${FILE_hic} $FILE_CHROME_LENGTH
 	else
-		java -Xmx2g -jar $PROGRAM_JUICER pre -r ${RESOLUTION} -f $FILE_enzyme_def -q $THRESHOLD_MAPQ -t ${DIR_tmp} ${FILE_data} ${FILE_hic} $FILE_CHROME_LENGTH
+		java -Xmx100g -jar $PROGRAM_JUICER pre -r ${RESOLUTION} -f $FILE_enzyme_def -q $THRESHOLD_MAPQ -t ${DIR_tmp} ${FILE_data} ${FILE_hic} $FILE_CHROME_LENGTH
 	fi
 fi
 
