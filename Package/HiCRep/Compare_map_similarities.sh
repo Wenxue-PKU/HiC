@@ -27,6 +27,9 @@ Description
 
 	-d, --data [data directory]
 		data directory
+	
+	--type [map type]
+		map type. Raw (default), ICE or ICE2
 EOF
 
 }
@@ -35,7 +38,7 @@ get_version(){
 	echo "${0} version 1.0"
 }
 SHORT=hvo:r:c:d:
-LONG=help,version,out:,resolution:,distance:,chromosome:,data:
+LONG=help,version,out:,resolution:,distance:,chromosome:,data:,type:
 PARSED=`getopt --options $SHORT --longoptions $LONG --name "$0" -- "$@"`
 if [[ $? -ne 0 ]]; then
 	exit 2
@@ -72,6 +75,10 @@ while true; do
 			CHR="$2"
 			shift 2
 			;;
+		--type)
+			TYPE="$2"
+			shift 2
+			;;
 		--)
 			shift
 			break
@@ -92,6 +99,7 @@ TIME_STAMP=$(date +"%Y-%m-%d")
 [ ! -n "${RESOLUTION}" ] && echo "Please specify resolution" && exit 1
 [ $# -lt 1 ] && echo "Please specify target Hi-C sample name(s)" && exit 1
 MAX_distance=${MAX_distance:-10000000}
+TYPE=${TYPE:-Raw}
 
 SAMPLES=($@)
 SAMPLE_NUM=$#
@@ -108,8 +116,8 @@ do
 	do
 		NAME1=${SAMPLES[$k]}
 		NAME2=${SAMPLES[$j]}
-		FILE_map1=${DIR_DATA}/${NAME1}/${RESOLUTION}/Raw/${CHR}.rds
-		FILE_map2=${DIR_DATA}/${NAME2}/${RESOLUTION}/Raw/${CHR}.rds
+		FILE_map1=${DIR_DATA}/${NAME1}/${RESOLUTION}/${TYPE}/${CHR}.rds
+		FILE_map2=${DIR_DATA}/${NAME2}/${RESOLUTION}/${TYPE}/${CHR}.rds
 		Rscript --vanilla --slave ${DIR_LIB}/Correlation_of_two_map_by_HiCRep.R -a $FILE_map1 -b $FILE_map2 --max_distance $MAX_distance > ${DIR_score}/${NAME1}_${NAME2}_${CHR}.txt
 	done
 done
