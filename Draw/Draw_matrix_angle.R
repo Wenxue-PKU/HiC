@@ -21,11 +21,11 @@ suppressWarnings(suppressMessages(library(dplyr)))
 
 
 # ### test data
-FILE_location <- "T:/Project/018_20191128_Noma_Senescent3/out/2020-08-31_example_map_hic_at_EP/data/draw_location_test.bed"
-DIR_out <- "T:/Project/018_20191128_Noma_Senescent3/out/2020-08-31_example_map_hic_at_EP/data/"
-DIR_in <- "T:/Project/018_20191128_Noma_Senescent3/data/IMR90_G_bmix/40kb/ICE2"
-MAXIMUM_DISTANCE <- 6000000
-NAME_SUFIX <- "_IMR90_G_bmix"
+# FILE_location <- "T:/Project/018_20191128_Noma_Senescent3/out/2020-08-31_example_map_hic_at_EP/data/draw_location_test.bed"
+# DIR_out <- "T:/Project/018_20191128_Noma_Senescent3/out/2020-08-31_example_map_hic_at_EP/data/"
+# DIR_in <- "T:/Project/018_20191128_Noma_Senescent3/data/IMR90_G_bmix/40kb/ICE2"
+# MAXIMUM_DISTANCE <- 6000000
+# NAME_SUFIX <- "_IMR90_G_bmix"
 
 
 
@@ -78,8 +78,6 @@ checkDIRpath <- function(DIR){
 DIR_in <- as.character(opt["in"])
 DIR_out <- checkDIRpath(as.character(opt["out"]))
 MAXIMUM_DISTANCE <- as.numeric(as.character(opt["max_distance"]))
-TARGET <- as.character(opt["target"])
-
 
 for(cc in D_location %>% distinct(chr) %>% pull(chr) %>% as.character()){
   if(substring(DIR_in, nchar(DIR_in)-3, nchar(DIR_in)) != ".rds"){
